@@ -14,41 +14,49 @@ library(tibble)
 # library(ggspatial)
 # library(cowplot)
 library(FD)
+library(ggplot2)
 
+# clean environment
+rm(list = ls())
 
 # Load steppe birds trait data:
-Species_traits <- read.csv("data/TraitsSteppebirdsFull.csv", stringsAsFactors = F)
-str(Species_traits)
-names(Species_traits)
+traits <- read.csv("data/TraitsSteppebirdsFull.csv", stringsAsFactors = F)
+traits <- traits[-c(42:1012),]
+str(traits)
+names(traits)
 
 # Removing columns related to common names, family, order, references and some traits that wont be worth to analyse 
 # such as: Trophic level (Trophic niche is more specific), Maximum longevity (most values are the same as longevity), 
 # relative_brain_size (removing now to calculate after imputation of brain size NAs values)
-Species_traits <- Species_traits[,c("binomial", "ESP_LAT", "Beak.Length_Culmen", "Beak.Length_Nares",
+traits <- traits[,c("binomial", "ESP_LAT", "Beak.Length_Culmen", "Beak.Length_Nares",
                                     "Beak.Width", "Beak.Depth", "Tarsus.Length", "Wing.Length", "Kipps.Distance",
-                                    "Secondary1", "Hand.Wing.Index", "Tail.Length", "Mass", "Habitat", "Habitat.Density",
+                                    "Hand.Wing.Index", "Tail.Length", "Mass", "Habitat", "Habitat.Density",
                                     "Migration", "Trophic.Level", "Trophic.Niche", "Primary.Lifestyle", "Range.Size",                
                                     "hab_breadth", "adult_length_cm", "female_maturity_d", "clutch_size_n", "clutches_per_y",
                                     "maximum_longevity_y", "egg_mass_g", "incubation_d", "fledging_age_d", "longevity_y", 
-                                    "birth_or_hatching_weight_g", "brood_value", "annual_survival", "PopulationDensity_ind_km2",
-                                    "brain_size_g", "relative_brain_size", "eye_axial_length", "eye_tranverse_diameter", 
+                                    "birth_or_hatching_weight_g", "annual_survival", "PopulationDensity_ind_km2",
+                                    "brain_size_g", "eye_axial_length", "eye_tranverse_diameter", 
                                     "activity", "Nest_type", "Foraging", "Degree_of_development", "Development_continuum",
                                     "Gregariousness", "Mating_system")]
 
-Species_traits$Habitat <- as.factor(Species_traits$Habitat)
-Species_traits$Habitat.Density <- as.factor(Species_traits$Habitat.Density)
-Species_traits$Migration <- as.factor(Species_traits$Migration)
-Species_traits$Trophic.Niche <- as.factor(Species_traits$Trophic.Niche)
-Species_traits$Primary.Lifestyle <- as.factor(Species_traits$Primary.Lifestyle)
-Species_traits$activity <- as.factor(Species_traits$activity)
-Species_traits$Nest_type <- as.factor(Species_traits$Nest_type)
-Species_traits$Foraging <- as.factor(Species_traits$Foraging)
-Species_traits$Degree_of_development <- as.factor(Species_traits$Degree_of_development)
-Species_traits$Gregariousness <- as.factor(Species_traits$Gregariousness)
-Species_traits$Mating_system <- as.factor(Species_traits$Mating_system)
+# check relationship between development categorical and continuous index
+ggplot(traits) + geom_boxplot((aes(Degree_of_development, Development_continuum)))
+ggplot(traits) + geom_histogram((aes(Development_continuum)))
+
+traits$Habitat <- as.factor(traits$Habitat)
+traits$Habitat.Density <- as.factor(traits$Habitat.Density)
+traits$Migration <- as.factor(traits$Migration)
+traits$Trophic.Niche <- as.factor(traits$Trophic.Niche)
+traits$Primary.Lifestyle <- as.factor(traits$Primary.Lifestyle)
+traits$activity <- as.factor(traits$activity)
+traits$Nest_type <- as.factor(traits$Nest_type)
+traits$Foraging <- as.factor(traits$Foraging)
+traits$Degree_of_development <- as.factor(traits$Degree_of_development)
+traits$Gregariousness <- as.factor(traits$Gregariousness)
+traits$Mating_system <- as.factor(traits$Mating_system)
 
 # Counting the number of NAs per each variable
-nasTraits = colSums(is.na(Species_traits))
+nasTraits = colSums(is.na(traits))
 
 nasTraits
 # Just a few NAs: PopDensity_ind_km2(3), birth_or_hatching_weight_g(10), brain size(8), hab_breadth(2), 
@@ -56,15 +64,15 @@ nasTraits
 
 # Imputation for NAs
 set.seed(42)
-imp <- missForest(Species_traits[,c(2:33)], verbose=FALSE)
-Species_traits_imp <- cbind(Species_traits$ESP_LAT, imp$ximp)
+imp <- missForest(traits[,c(2:33)], verbose=FALSE)
+traits_imp <- cbind(traits$ESP_LAT, imp$ximp)
 
-names (Species_traits_imp)[1] = "ESP_LAT"
+names (traits_imp)[1] = "ESP_LAT"
 
 # Now calculating relative brain size to body mass using residuals. Positive values relate to brains that are
 # bigger than expected
-model <- lm(brain_size_g ~ Mass, data = Species_traits_imp)
+model <- lm(brain_size_g ~ Mass, data = traits_imp)
 residuals  <-  model$residuals
-Species_traits_imp$relative_brain <- residuals
-Species_traits_imp$brain_size_g  <- NULL
+traits_imp$relative_brain <- residuals
+traits_imp$brain_size_g  <- NULL
 
