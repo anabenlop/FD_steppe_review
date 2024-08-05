@@ -25,6 +25,15 @@ traits <- traits[-c(42:1012),]
 str(traits)
 names(traits)
 
+traits$Type <- ifelse(traits$Type == "Aves Esteparias Estrictas", "Strict", "NonStrict")
+
+# Create matrix depicting strict and non-strict steppe bird species
+sp_matrix <- traits %>% group_by(Type, binomial) %>% 
+  summarize(n = n()) %>%
+  spread(key = binomial,value = n) %>% 
+  replace(is.na(.), 0) %>% #replace NAs with 0
+  tibble::column_to_rownames(var = "Type")
+
 # Removing columns related to common names, family, order, references and some traits that wont be worth to analyse 
 # such as: Trophic level (Trophic niche is more specific), Maximum longevity (most values are the same as longevity), 
 # relative_brain_size (removing now to calculate after imputation of brain size NAs values)
@@ -106,7 +115,6 @@ model <- lm(log10(brain_size_g) ~ log10(Mass), data = traits_imp)
 summary(model)
 residuals  <-  model$residuals
 traits_imp$relative_brain <- residuals
-# traits_imp$brain_size_g  <- NULL
 
 ggplot(traits_imp) + geom_histogram(aes(relative_brain))
 
@@ -174,8 +182,21 @@ traits_imp$eye_tranverse_diameter <- as.numeric(scale(log10(traits_imp$eye_tranv
 M = cor(traits_imp[,c(2:11, 18:34, 39, 42)])
 corrplot(M, method = 'number') # color
 
+# remove redundant traits
+traits_imp$brain_size_g  <- NULL #we already have relative brain
+traits_imp$longevity_y  <- NULL #max longevity included
+traits_imp$Trophic.Level  <- NULL #Trophic.niche more informative
+traits_imp$Degree_of_development  <- NULL #Development continuum more informative
+
 #Loading metadata: name of each variable and type of variable: Q (quantitative), N (nominal)
 traits_cat <- read.csv("data/Traits_categories.csv", stringsAsFactors = F)
+
+# remove redundant traits here as well
+traits_cat$brain_size_g  <- NULL #we already have relative brain
+traits_cat$longevity_y  <- NULL #max longevity included
+traits_cat$Trophic.Level  <- NULL #Trophic.niche more informative
+traits_cat$Degree_of_development  <- NULL #Development continuum more informative
+
 
 #Setting species names as row names
 rownames(traits_imp) <- traits_imp$binomial
@@ -187,12 +208,13 @@ species_traits_summ <- mFD::sp.tr.summary(
   sp_tr      = traits_imp, 
   stop_if_NA = TRUE)
 
-#calculate functional distance
+# Functional distance analyses ####
+#calculate functional distance matrix 
 func_dist <- mFD::funct.dist(sp_tr = traits_imp, tr_cat = traits_cat, metric="gower")
 
 # build up functional spaces: calculate with different weighting of deviation and
 # with or without scaling functional distance.
-func_space <- mFD::quality.fspaces(sp_dist= func_dist, maxdim_pcoa = 9,
+func_space <- mFD::quality.fspaces(sp_dist= func_dist, maxdim_pcoa = 4,
                                    deviation_weighting = c("absolute","squared"), fdist_scaling = c(TRUE,FALSE),
                                    fdendro= "average")
 
@@ -214,14 +236,14 @@ func_space$"quality_fspaces" %>%
 #plot quality of functional spaces with Mean Absolute Deviation 
 mFD::quality.fspaces.plot(fspaces_quality= func_space,
                           quality_metric  = "mad_scaled",
-                          fspaces_plot = c("tree_average", "pcoa_1d", "pcoa_2d", "pcoa_3d",
+                          fspaces_plot = c("tree_average", "pcoa_2d", "pcoa_3d",
                                            "pcoa_4d", "pcoa_5d", "pcoa_6d",
                                            "pcoa_7d", "pcoa_8d", "pcoa_9d"),
                           gradient_deviation = c(neg = "#030091", nul = "#66B79C", pos = "#C6FFB7"),
                           gradient_deviation_quality = c(low = "#B7E3FF", high = "#2800B2"),
                           x_lab= "Trait-based distance")
 
-# From XXX
+# From Magneville et al. 2022
 # convex hull-based indices require a space with less axes than the number of species number, and their computation time increases with the number of axes 
 # (to the point that functional beta-diversity indices are hardly computable in more than five dimensions). So if, for example, the best space is the one with 
 # six axes while the quality index of the 4D and 5D spaces are close, keeping the 4D space will be a pragmatic choice.
@@ -238,7 +260,7 @@ morpho <- c("Beak.Length_Culmen", "Beak.Length_Nares","Beak.Width", "Beak.Depth"
                         "adult_length_cm")
 
 demog <- c("female_maturity_d", "clutch_size_n", "clutches_per_y", "maximum_longevity_y", "egg_mass_g", "incubation_d", "fledging_age_d",  
-                       "birth_or_hatching_weight_g", "annual_survival", "PopulationDensity_ind_km2") # no logenvity_y or Range.Size
+                       "birth_or_hatching_weight_g", "annual_survival", "PopulationDensity_ind_km2") # no longevity_y or Range.Size
 
 develop <-  c("brain_size_g", "relative_brain", "eye_axial_length", "eye_tranverse_diameter", 
                           "Degree_of_development", "Development_continuum", "activity")
@@ -246,21 +268,119 @@ develop <-  c("brain_size_g", "relative_brain", "eye_axial_length", "eye_tranver
 behav <-  c("Habitat", "Habitat.Density","Migration", "Trophic.Niche", "Primary.Lifestyle", "hab_breadth", "Nest_type", # no trophic level
                         "Foraging",  "Gregariousness", "Mating_system")
 
-mFD::traits.faxes.cor(sp_tr=traits_imp[morpho], 
+trait_faxes1 <- mFD::traits.faxes.cor(sp_tr=traits_imp[morpho], 
                       sp_faxes_coord = sp_coords[ , c("PC1", "PC2", "PC3", "PC4", "PC5", "PC6", "PC7", "PC8", "PC9")], 
                       plot= TRUE)
 
-mFD::traits.faxes.cor(sp_tr=traits_imp[,demog], 
+trait_faxes2 <- mFD::traits.faxes.cor(sp_tr=traits_imp[,demog], 
                       sp_faxes_coord = sp_coords[ , c("PC1", "PC2", "PC3", "PC4", "PC5", "PC6", "PC7", "PC8", "PC9")], 
                       plot= TRUE)
 
-mFD::traits.faxes.cor(sp_tr=traits_imp[,develop], 
+trait_faxes3 <- mFD::traits.faxes.cor(sp_tr=traits_imp[,develop], 
                       sp_faxes_coord = sp_coords[ , c("PC1", "PC2", "PC3", "PC4", "PC5", "PC6", "PC7", "PC8", "PC9")], 
                       plot= TRUE)
 
-mFD::traits.faxes.cor(sp_tr=traits_imp[,behav], 
+trait_faxes4 <- mFD::traits.faxes.cor(sp_tr=traits_imp[,behav], 
                       sp_faxes_coord = sp_coords[ , c("PC1", "PC2", "PC3", "PC4", "PC5", "PC6", "PC7", "PC8", "PC9")], 
                       plot= TRUE)
 
+
+trait_faxes1$"tr_faxes_stat"[which(trait_faxes1$"tr_faxes_stat"$"p.value" < 0.05), ]
+
+trait_faxes2$"tr_faxes_stat"[which(trait_faxes2$"tr_faxes_stat"$"p.value" < 0.05), ]
+
+trait_faxes3$"tr_faxes_stat"[which(trait_faxes3$"tr_faxes_stat"$"p.value" < 0.05), ]
+
+trait_faxes4$"tr_faxes_stat"[which(trait_faxes4$"tr_faxes_stat"$"p.value" < 0.05), ]
+
+# Plotting 
+trait_faxes1$"tr_faxes_plot"
+trait_faxes2$"tr_faxes_plot"
+trait_faxes3$"tr_faxes_plot"
+trait_faxes4$"tr_faxes_plot"
 
 # convex hulls
+
+big_plot <- mFD::funct.space.plot(
+  sp_faxes_coord  = sp_coords[ ,c("PC1", "PC2", "PC3", "PC4")],
+  faxes           = c("PC1", "PC2", "PC3", "PC4"),
+  name_file       = NULL,
+  faxes_nm        = NULL,
+  range_faxes     = c(NA, NA),
+  color_bg        = "grey95",
+  color_pool      = "darkgreen",
+  fill_pool       = "white",
+  shape_pool      = 21,
+  size_pool       = 1,
+  plot_ch         = TRUE,
+  color_ch        = "black",
+  fill_ch         = "white",
+  alpha_ch        = 0.5,
+  plot_vertices   = TRUE,
+  color_vert      = "blueviolet",
+  fill_vert       = "blueviolet",
+  shape_vert      = 23,
+  size_vert       = 1,
+  plot_sp_nm      = NULL,
+  nm_size         = 3,
+  nm_color        = "black",
+  nm_fontface     = "plain",
+  check_input     = TRUE)
+
+# Alpha FD for strict and non-strict steppe birds ##############################
+
+FD_indices <-mFD::alpha.fd.multidim(
+  sp_faxes_coord   = sp_coords[ , c("PC1", "PC2", "PC3", "PC4", "PC5", "PC6", "PC7", "PC8", "PC9")],
+  asb_sp_w         = as.matrix(sp_matrix),
+  ind_vect         = c("fdis", "fmpd", "fnnd", "feve", "fric", "fdiv", "fori", 
+                       "fspe", "fide"),
+  scaling          = TRUE,
+  check_input      = TRUE,
+  details_returned = TRUE)
+
+# FD_indices <- FD_indices$"functional_diversity_indices" #transform to df
+# FD_indices$Type <- row.names(FD_indices)
+
+#Plot relationship between FD indices and type of steppe bird
+ggplot(FD_indices) + geom_point(aes(x = Type, y = fdiv))
+ggplot(FD_indices) + geom_point(aes(x = Type, y = fdis))
+ggplot(FD_indices) + geom_point(aes(x = Type, y = fspe))
+
+
+# plots convex hull all, strict steppe and non-strict steppe species
+
+plots_alpha <- mFD::alpha.multidim.plot(
+  output_alpha_fd_multidim = FD_indices,
+  plot_asb_nm              = c("Strict", "NonStrict"),
+  ind_nm                   = c("fdis", "fide", "fnnd", "feve", "fric", 
+                               "fdiv", "fori", "fspe"),
+  faxes                    = NULL,
+  faxes_nm                 = NULL,
+  range_faxes              = c(NA, NA),
+  color_bg                 = "grey95",
+  shape_sp                 = c(pool = 3, asb1 = 21, asb2 = 21),
+  size_sp                  = c(pool = 0.7, asb1 = 1, asb2 = 1),
+  color_sp                 = c(pool = "grey50", asb1 = "#1F968BFF", asb2 = "#DCE319FF"),
+  color_vert               = c(pool = "grey50", asb1 = "#1F968BFF", asb2 = "#DCE319FF"),
+  fill_sp                  = c(pool = NA, asb1 = "#1F968BFF", asb2 = "#DCE319FF"),
+  fill_vert                = c(pool = NA, asb1 = "#1F968BFF", asb2 = "#DCE319FF"),
+  color_ch                 = c(pool = NA, asb1 = "#1F968BFF", asb2 = "#DCE319FF"),
+  fill_ch                  = c(pool = "white", asb1 = "#1F968BFF", asb2 = "#DCE319FF"),
+  alpha_ch                 = c(pool = 1, asb1 = 0.3, asb2 = 0.3),
+  shape_centroid_fdis      = c(asb1 = 22,  asb2 = 24),
+  shape_centroid_fdiv      = c(asb1 = 22,  asb2 = 24),
+  shape_centroid_fspe      = 23,
+  color_centroid_fspe      = "black",
+  size_sp_nm               = 3, 
+  color_sp_nm              = "black",
+  plot_sp_nm               = NULL,
+  fontface_sp_nm           = "plain",
+  save_file                = FALSE,
+  check_input              = TRUE) 
+
+plots_alpha$"fric"$"patchwork" # convex hull
+# plots_alpha$"fdiv"$"patchwork"
+# plots_alpha$"fspe"$"patchwork"
+# plots_alpha$"fdis"$"patchwork"
+# plots_alpha$"fori"$"patchwork"
+
