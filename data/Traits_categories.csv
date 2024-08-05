@@ -6,7 +6,6 @@ Beak.Depth,Q
 Tarsus.Length,Q
 Wing.Length,Q
 Kipps.Distance,Q
-Secondary1,Q
 Hand.Wing.Index,Q
 Tail.Length,Q
 Mass,Q
@@ -31,7 +30,6 @@ birth_or_hatching_weight_g,Q
 annual_survival,Q
 PopulationDensity_ind_km2,Q
 brain_size_g,Q
-relative_brain_size,Q
 eye_axial_length,Q
 eye_tranverse_diameter,Q
 activity,N
@@ -41,3 +39,4 @@ Degree_of_development,N
 Development_continuum,Q
 Gregariousness,N
 Mating_system,N
+relative_brain,Q
