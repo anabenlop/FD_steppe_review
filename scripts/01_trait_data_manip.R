@@ -221,6 +221,11 @@ mFD::quality.fspaces.plot(fspaces_quality= func_space,
                           gradient_deviation_quality = c(low = "#B7E3FF", high = "#2800B2"),
                           x_lab= "Trait-based distance")
 
+# From XXX
+# convex hull-based indices require a space with less axes than the number of species number, and their computation time increases with the number of axes 
+# (to the point that functional beta-diversity indices are hardly computable in more than five dimensions). So if, for example, the best space is the one with 
+# six axes while the quality index of the 4D and 5D spaces are close, keeping the 4D space will be a pragmatic choice.
+
 # As FD indices will eventually be computed on coordinates on space (raw distance), 
 # we hereafter will consider only the mean absolute-deviation metric
 
@@ -257,3 +262,5 @@ mFD::traits.faxes.cor(sp_tr=traits_imp[,behav],
                       sp_faxes_coord = sp_coords[ , c("PC1", "PC2", "PC3", "PC4", "PC5", "PC6", "PC7", "PC8", "PC9")], 
                       plot= TRUE)
 
+
+# convex hulls
