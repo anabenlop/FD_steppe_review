@@ -1,5 +1,5 @@
 # Functional Diversity analysis for steppe birds
-# Date: 05/08/2024
+# Date: 10/09/2024
 # Author: Ana Benítez
 
 
@@ -31,11 +31,21 @@ sp_data <- read.csv("data/Species_trends.csv")
 sp_tax <- read.csv("data/TraitsSteppebirdsFull.csv")
 sp_tax <- sp_tax[,c("binomial", "Order", "Family")]
 
-sp_data$Type <- ifelse(sp_data$Type == "Strict steppe birds", "Strict", "NonStrict")
+# sp_data$Type <- ifelse(sp_data$Type == "Strict steppe birds", "Strict", "NonStrict")
 
 sp_data$pop_size <- (sp_data$Population.size.EBBA2..min. + sp_data$Population.size.EBBA2..max.)/2
+
+# Threat status in Europe --- Alaudala rufescens no category in Europe. From Cornell: "Decreases reported in Iberia, where species 
+# is locally regarded as “near-threatened” (race apetzii), and in Canary Is, where considered “endangered” on Gran Canaria 
+# (polatzeki) and “critical” on Tenerife (nominate). Considered Non-threatened for now. Although pop trends are Decreasing
+# López-Jiménez, N., Editor. (2021). Libro Rojo de las Aves de España. Sociedad Española de Ornitología, Madrid.
+# https://seo.org/wp-content/uploads/2022/09/LIbro-Rojo-web-3_01.pdf
+
 sp_data$threat <- ifelse(sp_data$Status.protection.Europe.IUCN == "Vulnerable" | 
                            sp_data$Status.protection.Europe.IUCN == "Endangered", "Threatened", "Non-threatened")
+
+sp_data[sp_data$binomial == "Alaudala rufescens",]$Population.trend.Europe.IUCN <- "Decreasing"
+
 
 # change character to factor for categorical variables
 trait_data$Habitat <- as.factor(trait_data$Habitat)
@@ -50,17 +60,11 @@ trait_data$Gregariousness <- as.factor(trait_data$Gregariousness)
 trait_data$Mating_system <- as.factor(trait_data$Mating_system)
 
 # Create matrix depicting strict and non-strict steppe bird species, with presence/absence and with abundance data
-sp_matrix <- sp_data %>% group_by(Type, binomial) %>% 
+sp_matrix <- sp_data %>% group_by(threat, binomial) %>% 
   summarize(n = n()) %>%
   spread(key = binomial,value = n) %>% 
   replace(is.na(.), 0) %>% #replace NAs with 0
-  tibble::column_to_rownames(var = "Type")
-
-# sp_ab_matrix <- sp_data %>% group_by(Type, binomial) %>% 
-#   summarize(pop_size = pop_size) %>%
-#   spread(key = binomial,value = pop_size)%>% #population size (total number individuals)
-#   replace(is.na(.), 0) %>% #replace NAs with 0
-#   tibble::column_to_rownames(var = "Type")
+  tibble::column_to_rownames(var = "threat")
 
 #Setting species names as row names
 rownames(trait_data) <- trait_data$binomial
@@ -216,31 +220,14 @@ FD_indices <- mFD::alpha.fd.multidim(
   check_input      = TRUE,
   details_returned = TRUE)
 
-# FD_indices_ab <- mFD::alpha.fd.multidim(
-#   sp_faxes_coord   = sp_coords[ , c("PC1", "PC2", "PC3", "PC4", "PC5", "PC6", "PC7", "PC8")],
-#   asb_sp_w         = as.matrix(sp_ab_matrix), # here change matrix
-#   ind_vect         = c("fdis", "fmpd", "fnnd", "feve", "fric", "fdiv", "fori", 
-#                        "fspe", "fide"),
-#   scaling          = TRUE,
-#   check_input      = TRUE,
-#   details_returned = TRUE)
-
 FD_df <- FD_indices$"functional_diversity_indices" #transform to df
-FD_df$Type <- row.names(FD_df)
-
-# FD_ab_df <- FD_indices_ab$"functional_diversity_indices" #transform to df
-# FD_ab_df$Type <- row.names(FD_ab_df)
-
+FD_df$threat <- row.names(FD_df)
 
 #Plot relationship between FD indices and type of steppe bird
-ggplot(FD_df) + geom_point(aes(x = Type, y = fric))
-ggplot(FD_df) + geom_point(aes(x = Type, y = fdiv))
-ggplot(FD_df) + geom_point(aes(x = Type, y = fdis))
-ggplot(FD_df) + geom_point(aes(x = Type, y = fspe))
-
-# ggplot(FD_ab_df) + geom_point(aes(x = Type, y = fdiv))
-# ggplot(FD_ab_df) + geom_point(aes(x = Type, y = fdis))
-# ggplot(FD_ab_df) + geom_point(aes(x = Type, y = fspe))
+ggplot(FD_df) + geom_point(aes(x = threat, y = fric))
+ggplot(FD_df) + geom_point(aes(x = threat, y = fdiv))
+ggplot(FD_df) + geom_point(aes(x = threat, y = fdis))
+ggplot(FD_df) + geom_point(aes(x = threat, y = fspe))
 
 # calculate indices for 2 axes
 FD_indices_2axes <- mFD::alpha.fd.multidim(
@@ -260,7 +247,7 @@ FD_2ax_df
 
 plots_alpha <- mFD::alpha.multidim.plot(
   output_alpha_fd_multidim = FD_indices,
-  plot_asb_nm              = c("Strict", "NonStrict"),
+  plot_asb_nm              = c("Non-threatened", "Threatened"),
   ind_nm                   = c("fdis", "fide", "fnnd", "feve", "fric", 
                                "fdiv", "fori", "fspe"),
   faxes                    = NULL,
@@ -306,6 +293,8 @@ pie(seq_along(myCol2),myCol2,col= myCol2)
 # ord <- cmdscale(func_dist, k = 4, eig = TRUE) MAMMOLA CALCULATION
 
 # we get species coordinates from the functional dimensions calculated above
+func_space$details_fspaces$pc_eigenvalues #get explained variance by each PC
+
 coordinates <- data.frame(sp_coords[,1:4])
 colnames(coordinates) <- c("PC1", "PC2", "PC3", "PC4")
 coordinates$binomial <- rownames(coordinates)
@@ -317,10 +306,16 @@ centroid <- coordinates %>% as_tibble() %>%
   group_by(Order) %>%
   summarise(cen.1 = mean(PC1), cen.2 = mean(PC2))
 
-centroid_type <- coordinates %>% as_tibble() %>%
+centroid_threat12 <- coordinates %>% as_tibble() %>%
   # add_column(order = sp_tax$Order) %>%
-  group_by(Type) %>%
+  group_by(threat) %>%
   summarise(cen.1 = mean(PC1), cen.2 = mean(PC2))
+
+centroid_threat34 <- coordinates %>% as_tibble() %>%
+  # add_column(order = sp_tax$Order) %>%
+  group_by(threat) %>%
+  summarise(cen.3 = mean(PC3), cen.4 = mean(PC4))
+
 
 fit <- vegan::envfit(ord = sp_coords, env = trait_data, w = NULL, na.rm = TRUE)
 
@@ -442,38 +437,38 @@ plot_space_trait <-  ggplot(data = coordinates, aes(PC1, PC2)) +
 
 plot_space_trait
 
-# plot_space_trait_34 <-  ggplot(data = coordinates, aes(PC3, PC4)) +
-#   stat_density_2d(
-#     aes(fill = after_stat(level)),
-#     geom = "polygon",
-#     colour = NA,
-#     alpha = .5,
-#     h = .25
-#   ) +
-#   geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
-#   geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
-#   geom_point(shape = 19,
-#              size = .5,
-#              colour = "black") +
-#   scale_fill_gradientn(colours = rev(myCol)) +
-#   theme(
-#     panel.background = element_rect(
-#       fill = NA,
-#       colour = "black",
-#       linewidth  = 1,
-#       linetype = "solid"
-#     ),
-#     panel.grid = element_blank(),
-#     legend.position = "none"
-#   ) +
-#   labs(x = "PCoA 3 (7.1%)", y = "PCoA 4 (6.4%)") +
-#   ylim(-.40, .40) + xlim(-.45, .45) +
-#   coord_fixed()
-# 
-# plot_space_trait_34
+plot_space_trait_34 <-  ggplot(data = coordinates, aes(PC3, PC4)) +
+  stat_density_2d(
+    aes(fill = after_stat(level)),
+    geom = "polygon",
+    colour = NA,
+    alpha = .5,
+    h = .25
+  ) +
+  geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
+  geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
+  geom_point(shape = 19,
+             size = .5,
+             colour = "black") +
+  scale_fill_gradientn(colours = rev(myCol2)) +
+  theme(
+    panel.background = element_rect(
+      fill = NA,
+      colour = "black",
+      linewidth  = 1,
+      linetype = "solid"
+    ),
+    panel.grid = element_blank(),
+    legend.position = "none"
+  ) +
+  labs(x = "PCoA 3 (7.1%)", y = "PCoA 4 (6.4%)") +
+  ylim(-.40, .40) + xlim(-.45, .45) +
+  coord_fixed()
 
-# plot functional space type of steppe bird (strict vs non-strict) ----
-plot_type <-
+plot_space_trait_34
+
+# plot functional space for threatened and non-threatened bird species ------
+plot_threat <-
   ggplot(coordinates, aes(PC1, PC2)) +
   stat_density_2d(
     aes(fill = after_stat(level)),
@@ -485,24 +480,24 @@ plot_type <-
   geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
   geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
   geom_point(
-    data = centroid_type,
+    data = centroid_threat12,
     aes(x = cen.1, y = cen.2),
     shape = 21,
     fill = "white",
     size = 2.5
   ) +
   geom_point(
-    data = centroid_type,
+    data = centroid_threat,
     aes(x = cen.1, y = cen.2),
     shape = 19,
     colour = "black",
     size = 1
   ) +
   scale_fill_gradientn(colours = rev(myCol2)) +
-  ggrepel::geom_text_repel(data = centroid_type,
+  ggrepel::geom_text_repel(data = centroid_threat12,
                            aes(x = cen.1,
                                y = cen.2,
-                               label = Type)) +
+                               label = threat)) +
   theme(
     panel.background = element_rect(
       fill = NA,
@@ -518,9 +513,9 @@ plot_type <-
   ylim(-.46, .46) + xlim(-.46, .46) +
   coord_fixed()
 
-plot_type
+plot_threat
 
-plot_type2 <-
+plot_threat2 <-
   ggplot(coordinates, aes(PC1, PC2)) +
   stat_density_2d(
     aes(fill = after_stat(level)),
@@ -532,20 +527,20 @@ plot_type2 <-
   geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
   geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
   geom_point(
-    data = centroid_type,
+    data = centroid_threat12,
     aes(x = cen.1, y = cen.2),
     shape = 21,
     fill = "white",
     size = 2.5
   ) +
   geom_point(
-    data = centroid_type,
+    data = centroid_threat12,
     aes(x = cen.1, y = cen.2),
     shape = 19,
     colour = "black",
     size = 1
   ) +
-  facet_wrap(vars(Type), ncol = 2) +
+  facet_wrap(vars(threat), ncol = 2) +
   scale_fill_gradientn(colours = rev(myCol2)) +
   theme(
     panel.background = element_rect(
@@ -562,8 +557,98 @@ plot_type2 <-
   ylim(-.46, .46) + xlim(-.46, .46) +
   coord_fixed()
 
-plot_type2
+plot_threat2
 
+plot_threat3 <-
+  ggplot(coordinates, aes(PC3, PC4)) +
+  stat_density_2d(
+    aes(fill = after_stat(level)),
+    geom = "polygon",
+    colour = NA,
+    alpha = .5,
+    h = .25
+  ) +
+  geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
+  geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
+  geom_point(
+    data = centroid_threat34,
+    aes(x = cen.3, y = cen.4),
+    shape = 21,
+    fill = "white",
+    size = 2.5
+  ) +
+  geom_point(
+    data = centroid_threat34,
+    aes(x = cen.3, y = cen.4),
+    shape = 19,
+    colour = "black",
+    size = 1
+  ) +
+  scale_fill_gradientn(colours = rev(myCol2)) +
+  ggrepel::geom_text_repel(data = centroid_threat34,
+                           aes(x = cen.3,
+                               y = cen.4,
+                               label = threat)) +
+  theme(
+    panel.background = element_rect(
+      fill = NA,
+      colour = "black",
+      linewidth  = 1,
+      linetype = "solid"
+    ),
+    panel.grid = element_blank(),
+    legend.position = "none",
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14)) +
+  labs(x = "PCoA 3 (7.1%)", y = "PCoA 4 (6.4%)") +
+  ylim(-.46, .46) + xlim(-.46, .46) +
+  coord_fixed()
+
+plot_threat3
+
+plot_threat4 <-
+  ggplot(coordinates, aes(PC3, PC4)) +
+  stat_density_2d(
+    aes(fill = after_stat(level)),
+    geom = "polygon",
+    colour = NA,
+    alpha = .5,
+    h = .25
+  ) +
+  geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
+  geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
+  geom_point(
+    data = centroid_threat34,
+    aes(x = cen.3, y = cen.4),
+    shape = 21,
+    fill = "white",
+    size = 2.5
+  ) +
+  geom_point(
+    data = centroid_threat34,
+    aes(x = cen.3, y = cen.4),
+    shape = 19,
+    colour = "black",
+    size = 1
+  ) +
+  facet_wrap(vars(threat), ncol = 2) +
+  scale_fill_gradientn(colours = rev(myCol2)) +
+  theme(
+    panel.background = element_rect(
+      fill = NA,
+      colour = "black",
+      linewidth  = 1,
+      linetype = "solid"
+    ),
+    panel.grid = element_blank(),
+    legend.position = "none",
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14)) +
+  labs(x = "PCoA 3 (7.1%)", y = "PCoA 4 (6.4%)") +
+  ylim(-.46, .46) + xlim(-.46, .46) +
+  coord_fixed()
+
+plot_threat4
 
 # plot functional space type of steppe bird with silhouttes ----
 library(png)
@@ -577,8 +662,8 @@ library(grid)
 # pholcidae$width <- unit(.6, "npc")
 # pholcidae$height <- unit(.6, "npc")
 # 
-# #Dysderidae
-# img <- readPNG("Silhouette/Dysderidae.png")
+# #Pteroclidae
+# img <- readPNG("Silhouette/Pteroclidae.png")
 # dysderidae <- rasterGrob(img, interpolate = TRUE)
 # dysderidae$width <- unit(.6, "npc")
 # dysderidae$height <- unit(.6, "npc")
@@ -592,7 +677,7 @@ library(grid)
 # plot traits onto ordination space
 plot_traits <-   ggplot(coordinates, aes(PC1, PC2)) +
   stat_density_2d(
-    aes(fill = ..level..),
+    aes(fill = after_stat(level)),
     geom = "polygon",
     colour = NA,
     alpha = .5,
@@ -632,6 +717,8 @@ plot_traits <-   ggplot(coordinates, aes(PC1, PC2)) +
   coord_fixed()
 
 plot_traits
+
+## plot family silhouettes
 
 plot_traits2 <-   ggplot(coordinates, aes(PC1, PC2)) +
   stat_density_2d(
@@ -720,3 +807,38 @@ plot_traits3 <-   ggplot(coordinates, aes(PC1, PC2)) +
 
 plot_traits3
 
+## check relationship between PCs and poptrends----
+head(sp_data)
+class(sp_coords)
+
+sp_PC <- data.frame(binomial = row.names(sp_coords), sp_coords[,1:2])
+
+sp_trends <- inner_join(sp_data, sp_PC, by = "binomial")
+
+hist(sp_trends$Change.index)
+
+#check with change index
+ggplot(sp_trends) + geom_point(aes(PC1, Change.index)) +
+                    geom_smooth(aes(PC1, Change.index), method = "lm")
+
+ggplot(sp_trends) + geom_point(aes(PC2, Change.index)) +
+  geom_smooth(aes(PC2, Change.index), method = "lm")
+
+summary(lm(Change.index ~ PC1, data = sp_trends))
+summary(lm(Change.index ~ PC2, data = sp_trends))
+
+#check with EBBA2 trends
+sp_trends$Pop.trend.EBBA2_recalc <- ifelse(is.na(sp_trends$Change.index), "Unknown",
+                                           ifelse(sp_trends$Change.index > 0, "Increase", "Loss"))
+                                           
+table(sp_trends$Pop.trend.EBBA2_recalc)
+ggplot(sp_trends) + geom_boxplot(aes(Pop.trend.EBBA2_recalc, PC1))
+
+ggplot(sp_trends) + geom_boxplot(aes(Pop.trend.EBBA2_recalc, PC2))
+
+
+#check with Population.trend.Europe.IUCN
+table(sp_trends$Population.trend.Europe.IUCN)
+ggplot(sp_trends) + geom_boxplot(aes(Population.trend.Europe.IUCN, PC1))
+ 
+ggplot(sp_trends) + geom_boxplot(aes(Population.trend.Europe.IUCN, PC2))

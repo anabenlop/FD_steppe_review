@@ -1,6 +1,9 @@
 # Functional Diversity analysis for steppe birds
-# Date: 05/08/2024
+# Date: 10/09/2024
 # Author: Ana Benítez
+
+# Here we remove species that are not really steppe-bird species according to our criteria
+# Charadrius morinellus, Gelochelidon nilotica, Oenanthe leucura, Falco tinnunculus, Bucanetes githagineus 
 
 
 # load libraries
@@ -30,12 +33,42 @@ trait_cat <- read.csv("clean_data/traits_cat_clean.csv")
 sp_data <- read.csv("data/Species_trends.csv")
 sp_tax <- read.csv("data/TraitsSteppebirdsFull.csv")
 sp_tax <- sp_tax[,c("binomial", "Order", "Family")]
+# sp_tax <- sp_tax[1:41,]
 
-sp_data$Type <- ifelse(sp_data$Type == "Strict steppe birds", "Strict", "NonStrict")
+# remove non steppe bird species
+
+# Charadrius morinellus, Gelochelidon nilotica, Oenanthe leucura, Saxicola dacotiae
+
+trait_data <- trait_data %>% 
+              filter(!binomial %in% c("Eudromias morinellus", "Gelochelidon nilotica","Oenanthe leucura", 
+                                      "Falco tinnunculus", "Bucanetes githagineus"))
+
+# sp_data <- sp_data[sp_data$binomial != "Eudromias morinellus" &
+#                      sp_data$binomial != "Gelochelidon nilotica" &
+#                      sp_data$binomial != "Oenanthe leucura" &
+#                      sp_data$binomial != "Saxicola dacotiae"]
+# 
+
+sp_tax <- sp_tax %>% 
+          filter(!binomial %in% c("Eudromias morinellus", "Gelochelidon nilotica","Oenanthe leucura", 
+                          "Falco tinnunculus", "Bucanetes githagineus"))
+
+
+# sp_data$Type <- ifelse(sp_data$Type == "Strict steppe birds", "Strict", "NonStrict")
 
 sp_data$pop_size <- (sp_data$Population.size.EBBA2..min. + sp_data$Population.size.EBBA2..max.)/2
+
+# Threat status in Europe --- Alaudala rufescens no category in Europe. From Cornell: "Decreases reported in Iberia, where species 
+# is locally regarded as “near-threatened” (race apetzii), and in Canary Is, where considered “endangered” on Gran Canaria 
+# (polatzeki) and “critical” on Tenerife (nominate). Considered Non-threatened for now. Although pop trends are Decreasing
+# López-Jiménez, N., Editor. (2021). Libro Rojo de las Aves de España. Sociedad Española de Ornitología, Madrid.
+# https://seo.org/wp-content/uploads/2022/09/LIbro-Rojo-web-3_01.pdf
+
 sp_data$threat <- ifelse(sp_data$Status.protection.Europe.IUCN == "Vulnerable" | 
                            sp_data$Status.protection.Europe.IUCN == "Endangered", "Threatened", "Non-threatened")
+
+sp_data[sp_data$binomial == "Alaudala rufescens",]$Population.trend.Europe.IUCN <- "Decreasing"
+
 
 # change character to factor for categorical variables
 trait_data$Habitat <- as.factor(trait_data$Habitat)
@@ -50,17 +83,11 @@ trait_data$Gregariousness <- as.factor(trait_data$Gregariousness)
 trait_data$Mating_system <- as.factor(trait_data$Mating_system)
 
 # Create matrix depicting strict and non-strict steppe bird species, with presence/absence and with abundance data
-sp_matrix <- sp_data %>% group_by(Type, binomial) %>% 
+sp_matrix <- sp_data %>% group_by(threat, binomial) %>% 
   summarize(n = n()) %>%
   spread(key = binomial,value = n) %>% 
   replace(is.na(.), 0) %>% #replace NAs with 0
-  tibble::column_to_rownames(var = "Type")
-
-# sp_ab_matrix <- sp_data %>% group_by(Type, binomial) %>% 
-#   summarize(pop_size = pop_size) %>%
-#   spread(key = binomial,value = pop_size)%>% #population size (total number individuals)
-#   replace(is.na(.), 0) %>% #replace NAs with 0
-#   tibble::column_to_rownames(var = "Type")
+  tibble::column_to_rownames(var = "threat")
 
 #Setting species names as row names
 rownames(trait_data) <- trait_data$binomial
@@ -119,6 +146,8 @@ mFD::quality.fspaces.plot(fspaces_quality= func_space,
 sp_coords <- func_space$details_fspaces$sp_pc_coord
 
 func_space$details_fspaces$pc_eigenvalues #get explained variance by each PC
+ # PC1 48.6%; PC2 22.2% --- # PC1 49%; PC2 22% Total: 71%
+
 
 # group traits by type
 morpho <- c("Beak.Length_Culmen", "Beak.Length_Nares","Beak.Width", "Beak.Depth", 
@@ -134,27 +163,27 @@ behav <-  c("Habitat", "Habitat.Density","Migration", "Trophic.Niche", "Primary.
             "Foraging",  "Gregariousness", "Mating_system")
 
 trait_faxes1 <- mFD::traits.faxes.cor(sp_tr=trait_data[morpho], 
-                                      sp_faxes_coord = sp_coords[ , c("PC1", "PC2", "PC3", "PC4")], 
+                                      sp_faxes_coord = sp_coords[ , c("PC1", "PC2")], 
                                       plot = TRUE)
 
 trait_faxes2 <- mFD::traits.faxes.cor(sp_tr=trait_data[,demog], 
-                                      sp_faxes_coord = sp_coords[ , c("PC1", "PC2", "PC3", "PC4")], 
+                                      sp_faxes_coord = sp_coords[ , c("PC1", "PC2")],  
                                       plot = TRUE)
 
 trait_faxes3 <- mFD::traits.faxes.cor(sp_tr=trait_data[,develop], 
-                                      sp_faxes_coord = sp_coords[ , c("PC1", "PC2", "PC3", "PC4")], 
+                                      sp_faxes_coord = sp_coords[ , c("PC1", "PC2")], 
                                       plot = TRUE)
 
 trait_faxes4 <- mFD::traits.faxes.cor(sp_tr=trait_data[,behav], 
-                                      sp_faxes_coord = sp_coords[ , c("PC1", "PC2", "PC3", "PC4")], 
+                                      sp_faxes_coord = sp_coords[ , c("PC1", "PC2")], 
                                       plot = TRUE)
 
 trait_faxes4a <- mFD::traits.faxes.cor(sp_tr=trait_data[,behav[1:5]], 
-                                      sp_faxes_coord = sp_coords[ , c("PC1", "PC2", "PC3", "PC4")], 
-                                      plot = TRUE)
+                                       sp_faxes_coord = sp_coords[ , c("PC1", "PC2")], 
+                                       plot = TRUE)
 
 trait_faxes4b <- mFD::traits.faxes.cor(sp_tr=trait_data[,behav[6:10]], 
-                                       sp_faxes_coord = sp_coords[ , c("PC1", "PC2", "PC3", "PC4")], 
+                                       sp_faxes_coord = sp_coords[ , c("PC1", "PC2")], 
                                        plot = TRUE)
 
 
@@ -216,31 +245,14 @@ FD_indices <- mFD::alpha.fd.multidim(
   check_input      = TRUE,
   details_returned = TRUE)
 
-# FD_indices_ab <- mFD::alpha.fd.multidim(
-#   sp_faxes_coord   = sp_coords[ , c("PC1", "PC2", "PC3", "PC4", "PC5", "PC6", "PC7", "PC8")],
-#   asb_sp_w         = as.matrix(sp_ab_matrix), # here change matrix
-#   ind_vect         = c("fdis", "fmpd", "fnnd", "feve", "fric", "fdiv", "fori", 
-#                        "fspe", "fide"),
-#   scaling          = TRUE,
-#   check_input      = TRUE,
-#   details_returned = TRUE)
-
 FD_df <- FD_indices$"functional_diversity_indices" #transform to df
-FD_df$Type <- row.names(FD_df)
-
-# FD_ab_df <- FD_indices_ab$"functional_diversity_indices" #transform to df
-# FD_ab_df$Type <- row.names(FD_ab_df)
-
+FD_df$threat <- row.names(FD_df)
 
 #Plot relationship between FD indices and type of steppe bird
-ggplot(FD_df) + geom_point(aes(x = Type, y = fric))
-ggplot(FD_df) + geom_point(aes(x = Type, y = fdiv))
-ggplot(FD_df) + geom_point(aes(x = Type, y = fdis))
-ggplot(FD_df) + geom_point(aes(x = Type, y = fspe))
-
-# ggplot(FD_ab_df) + geom_point(aes(x = Type, y = fdiv))
-# ggplot(FD_ab_df) + geom_point(aes(x = Type, y = fdis))
-# ggplot(FD_ab_df) + geom_point(aes(x = Type, y = fspe))
+ggplot(FD_df) + geom_point(aes(x = threat, y = fric))
+ggplot(FD_df) + geom_point(aes(x = threat, y = fdiv))
+ggplot(FD_df) + geom_point(aes(x = threat, y = fdis))
+ggplot(FD_df) + geom_point(aes(x = threat, y = fspe))
 
 # calculate indices for 2 axes
 FD_indices_2axes <- mFD::alpha.fd.multidim(
@@ -260,7 +272,7 @@ FD_2ax_df
 
 plots_alpha <- mFD::alpha.multidim.plot(
   output_alpha_fd_multidim = FD_indices,
-  plot_asb_nm              = c("Strict", "NonStrict"),
+  plot_asb_nm              = c("Non-threatened", "Threatened"),
   ind_nm                   = c("fdis", "fide", "fnnd", "feve", "fric", 
                                "fdiv", "fori", "fspe"),
   faxes                    = NULL,
@@ -306,10 +318,12 @@ pie(seq_along(myCol2),myCol2,col= myCol2)
 # ord <- cmdscale(func_dist, k = 4, eig = TRUE) MAMMOLA CALCULATION
 
 # we get species coordinates from the functional dimensions calculated above
+func_space$details_fspaces$pc_eigenvalues #get explained variance by each PC
+
 coordinates <- data.frame(sp_coords[,1:4])
 colnames(coordinates) <- c("PC1", "PC2", "PC3", "PC4")
 coordinates$binomial <- rownames(coordinates)
-coordinates <- inner_join(coordinates, sp_tax[,c("binomial", "Order")], by = "binomial")
+coordinates <- inner_join(coordinates, sp_tax[,c("binomial", "Order", "Family")], by = "binomial")
 coordinates <- inner_join(coordinates, sp_data[,c("binomial", "Type", "threat")], by = "binomial")
 
 centroid <- coordinates %>% as_tibble() %>%
@@ -317,10 +331,21 @@ centroid <- coordinates %>% as_tibble() %>%
   group_by(Order) %>%
   summarise(cen.1 = mean(PC1), cen.2 = mean(PC2))
 
-centroid_type <- coordinates %>% as_tibble() %>%
+centroid_fam <- coordinates %>% as_tibble() %>%
   # add_column(order = sp_tax$Order) %>%
-  group_by(Type) %>%
+  group_by(Family) %>%
   summarise(cen.1 = mean(PC1), cen.2 = mean(PC2))
+
+centroid_threat12 <- coordinates %>% as_tibble() %>%
+  # add_column(order = sp_tax$Order) %>%
+  group_by(threat) %>%
+  summarise(cen.1 = mean(PC1), cen.2 = mean(PC2))
+
+centroid_threat34 <- coordinates %>% as_tibble() %>%
+  # add_column(order = sp_tax$Order) %>%
+  group_by(threat) %>%
+  summarise(cen.3 = mean(PC3), cen.4 = mean(PC4))
+
 
 fit <- vegan::envfit(ord = sp_coords, env = trait_data, w = NULL, na.rm = TRUE)
 
@@ -371,7 +396,6 @@ trait_pos <- data.frame(trait_position) %>%
     "Shrubland" = "HabitatShrubland",
     "Desert" = "HabitatDesert",
     "Human-made" = "HabitatHuman Modified",
-    "Coast" = "HabitatCoastal",
     "Woodland" = "HabitatWoodland",
     "Wetland" = "HabitatWetland", 
     "Semi-open habitat" = "Habitat.Density2",  
@@ -397,16 +421,28 @@ trait_pos <- data.frame(trait_position) %>%
     "Ground foraging" = "ForagingGroundForaging",
     "Arboreal gleaning" = "ForagingArborealGleaning",
     "Aerial sallying" = "ForagingAerialSallying",
-    "Aerial screening" = "ForagingAerialScreening",
-  ) 
-# %>%
-#   filter(
-#     Trait != c(
-#       "AME_typeAbsent_Adaptation",
-#       "AME_typeAbsent_Ontology",
-#       "AME_typePresent"
-#     )
-#   )
+    "Aerial screening" = "ForagingAerialScreening"
+    ) 
+
+trait_pos_short <- trait_pos %>% filter(
+    Trait %in%
+      c("Wing length", 
+      "Length",
+      "Tarsus length",
+      "Hatching weight",
+      "Max. longevity",
+      "Fledging age",
+      "Semi-open habitat",
+      "Open habitat",
+      "Terrestrial",
+      "Ground-nesting",
+      "Ground foraging",
+      "Relative brain size",
+      "Elevated-nesting",
+      "Carnivore"
+    )
+)
+   
 
 
 theme_set(theme_minimal()) #Setting the theme
@@ -436,11 +472,77 @@ plot_space_trait <-  ggplot(data = coordinates, aes(PC1, PC2)) +
     legend.position = "none",
     axis.text = element_text(size = 12),
     axis.title = element_text(size = 14)) +
-  labs(x = "PCoA 1 (48%)", y = "PCoA 2 (21%)") +
-  ylim(-.46, .46) + xlim(-.46, .46) +
+  labs(x = "PCoA 1 (47%)", y = "PCoA 2 (23%)") +
+  ylim(-.47, .47) + xlim(-.47, .47) +
   coord_fixed()
 
 plot_space_trait
+
+ggsave(
+  plot = plot_space_trait,
+  filename = "output/funcspace.pdf",
+  width = 14,
+  height = 10,
+  units = "in")
+
+ggsave(
+  plot = plot_space_trait,
+  filename = "output/funcspace.png",
+  width = 7,
+  height = 5,
+  units = "in")
+
+# plot traits onto ordination space
+plot_trait_pos <-   ggplot(coordinates, aes(PC1, PC2)) +
+  stat_density_2d(
+    aes(fill = after_stat(level)),
+    geom = "polygon",
+    colour = NA,
+    alpha = .5,
+    h = .25
+  ) +
+  geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
+  geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
+  geom_point(
+    data = trait_pos_short,
+    aes(x = PC1, y = PC2),
+    shape = 21,
+    fill = "white",
+    size = 2.5
+  ) +
+  geom_point(
+    data = trait_pos_short,
+    aes(x = PC1, y = PC2),
+    shape = 19,
+    colour = "black",
+    size = 1
+  ) +
+  scale_fill_gradientn(colours = rev(myCol2)) +
+  ggrepel::geom_text_repel(data = trait_pos_short, aes(x = PC1, y = PC2, label = Trait), max.overlaps = 20) +
+  theme(
+    panel.background = element_rect(
+      fill = NA,
+      colour = "black",
+      linewidth  = 1,
+      linetype = "solid"
+    ),
+    panel.grid = element_blank(),
+    legend.position = "none",
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14)) +
+  labs(x = "PCoA 1 (47%)", y = "PCoA 2 (23%)") +
+  ylim(-.47, .47) + xlim(-.47, .47) +
+  coord_fixed()
+
+plot_trait_pos
+
+ggsave(
+  plot = plot_trait_pos,
+  filename = "output/funcspace_trait.png",
+  width = 7,
+  height = 5,
+  units = "in")
+
 
 # plot_space_trait_34 <-  ggplot(data = coordinates, aes(PC3, PC4)) +
 #   stat_density_2d(
@@ -455,7 +557,7 @@ plot_space_trait
 #   geom_point(shape = 19,
 #              size = .5,
 #              colour = "black") +
-#   scale_fill_gradientn(colours = rev(myCol)) +
+#   scale_fill_gradientn(colours = rev(myCol2)) +
 #   theme(
 #     panel.background = element_rect(
 #       fill = NA,
@@ -466,14 +568,14 @@ plot_space_trait
 #     panel.grid = element_blank(),
 #     legend.position = "none"
 #   ) +
-#   labs(x = "PCoA 3 (7.1%)", y = "PCoA 4 (6.4%)") +
+#   labs(x = "PCoA 3 (7.4%)", y = "PCoA 4 (6.5%)") +
 #   ylim(-.40, .40) + xlim(-.45, .45) +
 #   coord_fixed()
 # 
 # plot_space_trait_34
 
-# plot functional space type of steppe bird (strict vs non-strict) ----
-plot_type <-
+# plot functional space for threatened and non-threatened bird species ------
+plot_threat <-
   ggplot(coordinates, aes(PC1, PC2)) +
   stat_density_2d(
     aes(fill = after_stat(level)),
@@ -485,24 +587,24 @@ plot_type <-
   geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
   geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
   geom_point(
-    data = centroid_type,
+    data = centroid_threat12,
     aes(x = cen.1, y = cen.2),
     shape = 21,
     fill = "white",
     size = 2.5
   ) +
   geom_point(
-    data = centroid_type,
+    data = centroid_threat12,
     aes(x = cen.1, y = cen.2),
     shape = 19,
     colour = "black",
     size = 1
   ) +
   scale_fill_gradientn(colours = rev(myCol2)) +
-  ggrepel::geom_text_repel(data = centroid_type,
+  ggrepel::geom_text_repel(data = centroid_threat12,
                            aes(x = cen.1,
                                y = cen.2,
-                               label = Type)) +
+                               label = threat)) +
   theme(
     panel.background = element_rect(
       fill = NA,
@@ -514,13 +616,21 @@ plot_type <-
     legend.position = "none",
     axis.text = element_text(size = 12),
     axis.title = element_text(size = 14)) +
-  labs(x = "PCoA 1 (48%)", y = "PCoA 2 (21%)") +
+  labs(x = "PCoA 1 (47%)", y = "PCoA 2 (23%)") +
   ylim(-.46, .46) + xlim(-.46, .46) +
   coord_fixed()
 
-plot_type
+plot_threat
 
-plot_type2 <-
+ggsave(
+  plot = plot_threat,
+  filename = "output/funcspace_threat.pdf",
+  width = 14,
+  height = 10,
+  units = "in")
+
+
+plot_threat2 <-
   ggplot(coordinates, aes(PC1, PC2)) +
   stat_density_2d(
     aes(fill = after_stat(level)),
@@ -532,22 +642,22 @@ plot_type2 <-
   geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
   geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
   geom_point(
-    data = centroid_type,
+    data = centroid_threat12,
     aes(x = cen.1, y = cen.2),
     shape = 21,
     fill = "white",
     size = 2.5
   ) +
   geom_point(
-    data = centroid_type,
+    data = centroid_threat12,
     aes(x = cen.1, y = cen.2),
     shape = 19,
     colour = "black",
     size = 1
   ) +
-  facet_wrap(vars(Type), ncol = 2) +
+  facet_wrap(vars(threat), ncol = 2) +
   scale_fill_gradientn(colours = rev(myCol2)) +
-  theme(
+  theme(strip.text = element_text(size=14),
     panel.background = element_rect(
       fill = NA,
       colour = "black",
@@ -558,12 +668,109 @@ plot_type2 <-
     legend.position = "none",
     axis.text = element_text(size = 12),
     axis.title = element_text(size = 14)) +
-  labs(x = "PCoA 1 (48%)", y = "PCoA 2 (21%)")+
+  labs(x = "PCoA 1 (47%)", y = "PCoA 2 (23%)")+
   ylim(-.46, .46) + xlim(-.46, .46) +
   coord_fixed()
 
-plot_type2
+plot_threat2
 
+ggsave(
+  plot = plot_threat2,
+  filename = "output/funcspace_threat_split.pdf",
+  width = 14,
+  height = 10,
+  units = "in")
+
+# plot_threat3 <-
+#   ggplot(coordinates, aes(PC3, PC4)) +
+#   stat_density_2d(
+#     aes(fill = after_stat(level)),
+#     geom = "polygon",
+#     colour = NA,
+#     alpha = .5,
+#     h = .25
+#   ) +
+#   geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
+#   geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
+#   geom_point(
+#     data = centroid_threat34,
+#     aes(x = cen.3, y = cen.4),
+#     shape = 21,
+#     fill = "white",
+#     size = 2.5
+#   ) +
+#   geom_point(
+#     data = centroid_threat34,
+#     aes(x = cen.3, y = cen.4),
+#     shape = 19,
+#     colour = "black",
+#     size = 1
+#   ) +
+#   scale_fill_gradientn(colours = rev(myCol2)) +
+#   ggrepel::geom_text_repel(data = centroid_threat34,
+#                            aes(x = cen.3,
+#                                y = cen.4,
+#                                label = threat)) +
+#   theme(
+#     panel.background = element_rect(
+#       fill = NA,
+#       colour = "black",
+#       linewidth  = 1,
+#       linetype = "solid"
+#     ),
+#     panel.grid = element_blank(),
+#     legend.position = "none",
+#     axis.text = element_text(size = 12),
+#     axis.title = element_text(size = 14)) +
+#   labs(x = "PCoA 3 (7.1%)", y = "PCoA 4 (6.4%)") +
+#   ylim(-.46, .46) + xlim(-.46, .46) +
+#   coord_fixed()
+# 
+# plot_threat3
+# 
+# plot_threat4 <-
+#   ggplot(coordinates, aes(PC3, PC4)) +
+#   stat_density_2d(
+#     aes(fill = after_stat(level)),
+#     geom = "polygon",
+#     colour = NA,
+#     alpha = .5,
+#     h = .25
+#   ) +
+#   geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
+#   geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
+#   geom_point(
+#     data = centroid_threat34,
+#     aes(x = cen.3, y = cen.4),
+#     shape = 21,
+#     fill = "white",
+#     size = 2.5
+#   ) +
+#   geom_point(
+#     data = centroid_threat34,
+#     aes(x = cen.3, y = cen.4),
+#     shape = 19,
+#     colour = "black",
+#     size = 1
+#   ) +
+#   facet_wrap(vars(threat), ncol = 2) +
+#   scale_fill_gradientn(colours = rev(myCol2)) +
+#   theme(
+#     panel.background = element_rect(
+#       fill = NA,
+#       colour = "black",
+#       linewidth  = 1,
+#       linetype = "solid"
+#     ),
+#     panel.grid = element_blank(),
+#     legend.position = "none",
+#     axis.text = element_text(size = 12),
+#     axis.title = element_text(size = 14)) +
+#   labs(x = "PCoA 3 (7.1%)", y = "PCoA 4 (6.4%)") +
+#   ylim(-.46, .46) + xlim(-.46, .46) +
+#   coord_fixed()
+# 
+# plot_threat4
 
 # plot functional space type of steppe bird with silhouttes ----
 library(png)
@@ -571,26 +778,30 @@ library(grid)
 
 # LOAD SILLOUETES
 
-#Otididae
-# img <- readPNG("Silhouette/Otididae.png")
-# pholcidae <- rasterGrob(img, interpolate = TRUE)
-# pholcidae$width <- unit(.6, "npc")
-# pholcidae$height <- unit(.6, "npc")
+#Otidiformes
+img <- readPNG("silhouette/houbara.png")
+Otidiformes <- rasterGrob(img, interpolate = TRUE)
+Otidiformes$width <- unit(.6, "npc")
+Otidiformes$height <- unit(.6, "npc")
 # 
-# #Dysderidae
-# img <- readPNG("Silhouette/Dysderidae.png")
-# dysderidae <- rasterGrob(img, interpolate = TRUE)
-# dysderidae$width <- unit(.6, "npc")
-# dysderidae$height <- unit(.6, "npc")
+# #Pterocliformes
+img <- readPNG("silhouette/pterocles_gimp.png")
+Pterocliformes <- rasterGrob(img, interpolate = TRUE)
+Pterocliformes$width <- unit(.6, "npc")
+Pterocliformes$height <- unit(.6, "npc")
 # 
-# #Nesticidae
-# img <- readPNG("Silhouette/Nesticidae.png")
-# nesticidae <- rasterGrob(img, interpolate = TRUE)
-# nesticidae$width <- unit(.6, "npc")
-# nesticidae$height <- unit(.6, "npc")
+# #Falconiformes
+img <- readPNG("silhouette/falco.png")
+Falconiformes <- rasterGrob(img, interpolate = TRUE)
+Falconiformes$width <- unit(.6, "npc")
+Falconiformes$height <- unit(.6, "npc")
 
-# plot traits onto ordination space
-plot_traits <-   ggplot(coordinates, aes(PC1, PC2)) +
+
+
+
+## plot order-family centroids
+
+plot_traits_order <-   ggplot(coordinates, aes(PC1, PC2)) +
   stat_density_2d(
     aes(fill = ..level..),
     geom = "polygon",
@@ -601,64 +812,56 @@ plot_traits <-   ggplot(coordinates, aes(PC1, PC2)) +
   geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
   geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
   geom_point(
-    data = trait_pos,
-    aes(x = PC1, y = PC2),
+    data = centroid,
+    aes(x = cen.1, y = cen.2),
     shape = 21,
     fill = "white",
     size = 2.5
   ) +
   geom_point(
-    data = trait_pos,
-    aes(x = PC1, y = PC2),
+    data = centroid,
+    aes(x = cen.1, y = cen.2),
     shape = 19,
     colour = "black",
     size = 1
   ) +
+  # annotation_custom(
+  #   Otidiformes,
+  #   xmin = .23,
+  #   xmax = 0.45,
+  #   ymin = .07,
+  #   ymax = .27
+  # ) +
+  # annotation_custom(
+  #   Pterocliformes,
+  #   xmin = .05,
+  #   xmax = .25,
+  #   ymin = .1,
+  #   ymax = .3
+  # ) +
+  # annotation_custom(
+  #   Falconiformes,
+  #   xmin = .05,
+  #   xmax = 0.25,
+  #   ymin = -.20,
+  #   ymax = -.4
+  # ) +
+  # annotation_custom(
+  #   leptonetidae,
+  #   xmin = .15,
+  #   xmax = .37,
+  #   ymin = 0,
+  #   ymax = -.1
+  # ) +
+  # annotation_custom(
+  #   symphytognathidae,
+  #   xmin = .05,
+  #   xmax = .15,
+  #   ymin = -0.31,
+  #   ymax = -.38
+  # ) +
   scale_fill_gradientn(colours = rev(myCol2)) +
-  ggrepel::geom_text_repel(data = trait_pos, aes(x = PC1, y = PC2, label = Trait), max.overlaps = 20) +
-  theme(
-    panel.background = element_rect(
-      fill = NA,
-      colour = "black",
-      linewidth  = 1,
-      linetype = "solid"
-    ),
-    panel.grid = element_blank(),
-    legend.position = "none",
-    axis.text = element_text(size = 12),
-    axis.title = element_text(size = 14)) +
-  labs(x = "PCoA 1 (48%)", y = "PCoA 2 (21%)") +
-  ylim(-.46, .46) + xlim(-.46, .46) +
-  coord_fixed()
-
-plot_traits
-
-plot_traits2 <-   ggplot(coordinates, aes(PC1, PC2)) +
-  stat_density_2d(
-    aes(fill = ..level..),
-    geom = "polygon",
-    colour = NA,
-    alpha = .5,
-    h = .25
-  ) +
-  geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
-  geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
-  geom_point(
-    data = trait_pos,
-    aes(x = PC1, y = PC2),
-    shape = 21,
-    fill = "white",
-    size = 2.5
-  ) +
-  geom_point(
-    data = trait_pos,
-    aes(x = PC1, y = PC2),
-    shape = 19,
-    colour = "black",
-    size = 1
-  ) +
-  scale_fill_gradientn(colours = rev(myCol2)) +
-  ggrepel::geom_text_repel(data = trait_pos, aes(x = PC1, y = PC2, label = Trait), max.overlaps = 15) +
+  ggrepel::geom_text_repel(data = centroid, aes(x = cen.1, y = cen.2, label = Order), max.overlaps = 15) +
   theme(
     panel.background = element_rect(
       fill = NA,
@@ -669,14 +872,20 @@ plot_traits2 <-   ggplot(coordinates, aes(PC1, PC2)) +
     panel.grid = element_blank(),
     legend.position = "none"
   )  +
-  labs(x = "PCoA 1 (43%)", y = "PCoA 2 (35%)") +
-  ylim(-.30, .30) + xlim(-.50, .50) +
-  coord_fixed() +
-  facet_wrap(vars(Type), ncol = 2) 
+  labs(x = "PCoA 1 (47%)", y = "PCoA 2 (23%)") +
+  ylim(-.47, .47) + xlim(-.47, .47) +
+  coord_fixed() 
 
-plot_traits2
+plot_traits_order
 
-plot_traits3 <-   ggplot(coordinates, aes(PC1, PC2)) +
+ggsave(
+  plot = plot_traits_order,
+  filename = "output/funcspace_order.png",
+  width = 7,
+  height = 5,
+  units = "in")
+
+plot_traits_family <-   ggplot(coordinates, aes(PC1, PC2)) +
   stat_density_2d(
     aes(fill = ..level..),
     geom = "polygon",
@@ -686,37 +895,191 @@ plot_traits3 <-   ggplot(coordinates, aes(PC1, PC2)) +
   ) +
   geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
   geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
-  # geom_point(
-  #   data = trait_pos,
-  #   aes(x = PC1, y = PC2),
-  #   shape = 21,
-  #   fill = "white",
-  #   size = 2.5
-  # ) +
-  # geom_point(
-  #   data = trait_pos,
-  #   aes(x = PC1, y = PC2),
-  #   shape = 19,
-  #   colour = "black",
-  #   size = 1
-  # ) +
+  geom_point(
+    data = centroid_fam,
+    aes(x = cen.1, y = cen.2),
+    shape = 21,
+    fill = "white",
+    size = 2.5
+  ) +
+  geom_point(
+    data = centroid_fam,
+    aes(x = cen.1, y = cen.2),
+    shape = 19,
+    colour = "black",
+    size = 1
+  ) +
   scale_fill_gradientn(colours = rev(myCol2)) +
-  # ggrepel::geom_text_repel(data = trait_pos, aes(x = PC1, y = PC2, label = Trait), max.overlaps = 15) +
+  ggrepel::geom_text_repel(data = centroid_fam, aes(x = cen.1, y = cen.2, label = Family), max.overlaps = 15) +
   theme(
     panel.background = element_rect(
       fill = NA,
       colour = "black",
-      size = 1,
+      linewidth = 1,
       linetype = "solid"
     ),
     panel.grid = element_blank(),
-    legend.position = "none",
-    axis.text = element_text(size = 12),
-    axis.title = element_text(size = 14)) +
-  labs(x = "PCoA 1 (48%)", y = "PCoA 2 (21%)") +
-  ylim(-.50, .50) + xlim(-.50, .50) +
-  coord_fixed() +
-  facet_wrap(vars(Type, threat), ncol = 2, nrow = 2) 
+    legend.position = "none"
+  )  +
+  labs(x = "PCoA 1 (47%)", y = "PCoA 2 (23%)") +
+  ylim(-.47, .47) + xlim(-.47, .47) +
+  coord_fixed() 
 
-plot_traits3
+plot_traits_family
+
+ggsave(
+  plot = plot_traits_family,
+  filename = "output/funcspace_fam.png",
+  width = 7,
+  height = 5,
+  units = "in")
+
+# plot_traits3 <-   ggplot(coordinates, aes(PC1, PC2)) +
+#   stat_density_2d(
+#     aes(fill = ..level..),
+#     geom = "polygon",
+#     colour = NA,
+#     alpha = .5,
+#     h = .25
+#   ) +
+#   geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
+#   geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
+#   # geom_point(
+#   #   data = trait_pos,
+#   #   aes(x = PC1, y = PC2),
+#   #   shape = 21,
+#   #   fill = "white",
+#   #   size = 2.5
+#   # ) +
+#   # geom_point(
+#   #   data = trait_pos,
+#   #   aes(x = PC1, y = PC2),
+#   #   shape = 19,
+#   #   colour = "black",
+#   #   size = 1
+#   # ) +
+#   scale_fill_gradientn(colours = rev(myCol2)) +
+#   # ggrepel::geom_text_repel(data = trait_pos, aes(x = PC1, y = PC2, label = Trait), max.overlaps = 15) +
+#   theme(
+#     panel.background = element_rect(
+#       fill = NA,
+#       colour = "black",
+#       size = 1,
+#       linetype = "solid"
+#     ),
+#     panel.grid = element_blank(),
+#     legend.position = "none",
+#     axis.text = element_text(size = 12),
+#     axis.title = element_text(size = 14)) +
+#   labs(x = "PCoA 1 (48%)", y = "PCoA 2 (21%)") +
+#   ylim(-.50, .50) + xlim(-.50, .50) +
+#   coord_fixed() +
+#   facet_wrap(vars(Type, threat), ncol = 2, nrow = 2) 
+# 
+# plot_traits3
+
+## check relationship between PCs and poptrends----
+head(sp_data)
+class(sp_coords)
+
+sp_PC <- data.frame(binomial = row.names(sp_coords), sp_coords[,1:2])
+
+sp_trends <- inner_join(sp_data, sp_PC, by = "binomial")
+
+hist(sp_trends$Change.index)
+
+#check with change index
+# it does not include Cursorius cursor, Galerida cristata, Anthus berthelotii, Bucanetes githagineus   
+ggplot(sp_trends) + geom_point(aes(PC1, Change.index)) +
+  geom_smooth(aes(PC1, Change.index), method = "lm") + theme_bw()
+
+# ggplot(sp_trends) + geom_point(aes(PC1, Change.index)) +
+#   geom_smooth(aes(PC1, Change.index), method = "loess")
+
+ggplot(sp_trends) + geom_point(aes(PC2, Change.index)) +
+  geom_smooth(aes(PC2, Change.index), method = "lm") + theme_bw()
+
+# ggplot(sp_trends) + geom_point(aes(PC2, Change.index)) +
+#   geom_smooth(aes(PC2, Change.index), method = "loess")
+
+m1 <- lm(Change.index ~ PC1, data = sp_trends)
+m2 <- lm(Change.index ~ PC2, data = sp_trends)
+m3 <- lm(Change.index ~ PC1 + PC2, data = sp_trends)
+m4 <- lm(Change.index ~ PC1*PC2, data = sp_trends)
+
+AIC(m1,m2,m3,m4)
+
+#check with EBBA2 trends
+sp_trends$Pop.trend.EBBA2_recalc <- ifelse(is.na(sp_trends$Change.index), "Unknown",
+                                           ifelse(sp_trends$Change.index > 0, "Increase", "Loss"))
+
+table(sp_trends$Pop.trend.EBBA2_recalc)
+ggplot(sp_trends) + geom_boxplot(aes(Pop.trend.EBBA2_recalc, PC1))
+
+ggplot(sp_trends) + geom_boxplot(aes(Pop.trend.EBBA2_recalc, PC2))
+
+
+#check with Population.trend.Europe.IUCN
+table(sp_trends$Population.trend.Europe.IUCN)
+ggplot(sp_trends) + geom_boxplot(aes(Population.trend.Europe.IUCN, PC1))
+
+ggplot(sp_trends) + geom_boxplot(aes(Population.trend.Europe.IUCN, PC2))
+
+## check relationship between PCs and scoring
+sp_rank <- read.csv("data/sp_rank.csv", stringsAsFactors = F)
+
+sp_trends <- inner_join(sp_trends, sp_rank, by = "binomial")
+
+#check correlation between PC1 and scoring
+ggplot(sp_trends) + geom_point(aes(PC1, Promedio)) +
+  geom_smooth(aes(PC1, Promedio), method = "lm") + theme_bw()
+
+# ggplot(sp_trends) + geom_point(aes(PC1, Promedio)) +
+#   geom_smooth(aes(PC1, Promedio), method = "loess")
+
+ggplot(sp_trends) + geom_point(aes(PC2, Promedio)) +
+  geom_smooth(aes(PC2, Promedio), method = "lm") + theme_bw()
+
+# ggplot(sp_trends) + geom_point(aes(PC2, Promedio)) +
+#   geom_smooth(aes(PC2, Promedio), method = "loess") 
+
+summary(lm(Promedio ~ PC1, data = sp_trends))
+summary(lm(Promedio ~ PC2, data = sp_trends))
+
+#remove Vanellus vanellus and Pluvialis apricaria
+sp_trends2 <- sp_trends[sp_trends$Promedio > 4, ]
+
+ggplot(sp_trends2) + geom_point(aes(PC1, Promedio)) +
+  geom_smooth(aes(PC1, Promedio), method = "lm") + theme_bw()
+
+ggplot(sp_trends2) + geom_point(aes(PC2, Promedio)) +
+  geom_smooth(aes(PC2, Promedio), method = "lm") + theme_bw()
+
+m1 <- lm(Promedio ~ PC1, data = sp_trends2)
+m2 <- lm(Promedio ~ PC2, data = sp_trends2)
+m3 <- lm(Promedio ~ PC1 + PC2, data = sp_trends2)
+m4 <- lm(Promedio ~ PC1*PC2, data = sp_trends2)
+m3b <- lm(Promedio ~ poly(PC1,2), data = sp_trends2) # does not work
+m3c <- lm(Promedio ~ poly(PC2,2), data = sp_trends2) # does not work
+
+AIC(m1,m2,m3,m4)
+
+library(effects)
+plot(allEffects(m3))
+plot(allEffects(m4))
+plot(allEffects(m3b))
+
+# check relationship between trends and PC scores
+m5 <- lm(Change.index ~ PC1, data = sp_trends)
+m6 <- lm(Change.index ~ PC2, data = sp_trends)
+m7 <- lm(Change.index ~ PC1 + PC2, data = sp_trends)
+m8 <- lm(Change.index ~ PC1*PC2, data = sp_trends)
+
+AIC(m5,m6,m7,m8)
+
+plot(allEffects(m7))
+plot(allEffects(m8))
+summary(m8)
+
+
 

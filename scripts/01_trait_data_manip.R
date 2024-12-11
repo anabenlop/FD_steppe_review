@@ -155,33 +155,6 @@ ggplot(traits_imp) + geom_histogram(aes(Development_continuum))
 continuous <- c(2:11, 18:34, 39, 42) #vector of columns with continuous traits
 traits_imp <- BAT::standard(data.frame(traits_imp), method = "standard", convert = continuous) 
 
-# traits_imp$Beak.Length_Culmen<- as.numeric(scale(log10(traits_imp$Beak.Length_Culmen), center=TRUE, scale=TRUE))
-# traits_imp$Beak.Length_Nares<- as.numeric(scale(log10(traits_imp$Beak.Length_Nares), center=TRUE, scale=TRUE))
-# traits_imp$Beak.Width<- as.numeric(scale(log10(traits_imp$Beak.Width), center=TRUE, scale=TRUE))
-# traits_imp$Beak.Depth<- as.numeric(scale(log10(traits_imp$Beak.Depth), center=TRUE, scale=TRUE))
-# traits_imp$Tarsus.Length<- as.numeric(scale(log10(traits_imp$Tarsus.Length), center=TRUE, scale=TRUE))
-# traits_imp$Wing.Length<- as.numeric(scale(log10(traits_imp$Wing.Length), center=TRUE, scale=TRUE))
-# traits_imp$Kipps.Distance <- as.numeric(scale(log10(traits_imp$Kipps.Distance), center=TRUE, scale=TRUE))
-# traits_imp$Hand.Wing.Index <- as.numeric(scale(log10(traits_imp$Hand.Wing.Index), center=TRUE, scale=TRUE))
-# traits_imp$Tail.Length <- as.numeric(scale(log10(traits_imp$Tail.Length), center=TRUE, scale=TRUE))
-# traits_imp$Mass <- as.numeric(scale(log10(traits_imp$Mass), center=TRUE, scale=TRUE))
-# traits_imp$hab_breadth <- as.numeric(scale(log10(traits_imp$hab_breadth), center=TRUE, scale=TRUE))
-# traits_imp$Range.Size <- as.numeric(scale(log10(traits_imp$Range.Size), center=TRUE, scale=TRUE))
-# traits_imp$adult_length_cm <- as.numeric(scale(log10(traits_imp$adult_length_cm), center=TRUE, scale=TRUE))
-# traits_imp$female_maturity_d <- as.numeric(scale(log10(traits_imp$female_maturity_d), center=TRUE, scale=TRUE))
-# traits_imp$clutch_size_n <- as.numeric(scale(log10(traits_imp$clutch_size_n), center=TRUE, scale=TRUE))
-# traits_imp$clutches_per_y <- as.numeric(scale(log10(traits_imp$clutches_per_y), center=TRUE, scale=TRUE))
-# traits_imp$maximum_longevity_y <- as.numeric(scale(log10(traits_imp$maximum_longevity_y), center=TRUE, scale=TRUE))
-# traits_imp$egg_mass_g <- as.numeric(scale(log10(traits_imp$egg_mass_g), center=TRUE, scale=TRUE))
-# traits_imp$incubation_d <- as.numeric(scale(log10(traits_imp$incubation_d), center=TRUE, scale=TRUE))
-# traits_imp$fledging_age_d <- as.numeric(scale(log10(traits_imp$fledging_age_d), center=TRUE, scale=TRUE))
-# traits_imp$longevity_y <- as.numeric(scale(log10(traits_imp$longevity_y), center=TRUE, scale=TRUE))
-# traits_imp$birth_or_hatching_weight_g <- as.numeric(scale(log10(traits_imp$birth_or_hatching_weight_g), center=TRUE, scale=TRUE))
-# traits_imp$annual_survival <- as.numeric(scale(log10(traits_imp$annual_survival), center=TRUE, scale=TRUE))
-# traits_imp$PopulationDensity_ind_km2 <- as.numeric(scale(log10(traits_imp$PopulationDensity_ind_km2), center=TRUE, scale=TRUE))
-# traits_imp$brain_size_g <- as.numeric(scale(log10(traits_imp$brain_size_g), center=TRUE, scale=TRUE))
-# traits_imp$eye_tranverse_diameter <- as.numeric(scale(log10(traits_imp$eye_tranverse_diameter), center=TRUE, scale=TRUE))
-
 # Check Collinearity between continuous traits
 M = cor(traits_imp[,continuous])
 corrplot(M, method = 'number') # color
@@ -190,17 +163,19 @@ dev.off()
 # Check Collinearity
 psych::pairs.panels(traits_imp[,colnames(traits_imp[continuous])])
 
-# remove redundant traits
+# remove redundant and/or uninformative traits
 traits_imp$brain_size_g  <- NULL #we already have relative brain
 traits_imp$longevity_y  <- NULL #max longevity included
 traits_imp$Trophic.Level  <- NULL #Trophic.niche more informative
 traits_imp$Degree_of_development  <- NULL #Development continuum more informative
+traits_imp$Mating_system <- NULL # Mating system not relevant for the PCA (see script 2) 
+traits_imp$activity <- NULL # only too few nocturnal species
 
 #Loading metadata: name of each variable and type of variable: Q (quantitative), N (nominal)
 traits_cat <- read.csv("data/Traits_categories.csv", stringsAsFactors = F)
 
 # remove redundant traits here as well
-traits_cat <- traits_cat[-c(31,27, 14, 37),]
+traits_cat <- traits_cat[-c(31,27, 14, 37, 34, 40),]
 
 # save trait matrix and trait categories for further analyses in script 02
 write.csv(traits_imp, "clean_data//traits_clean.csv", row.names = F)

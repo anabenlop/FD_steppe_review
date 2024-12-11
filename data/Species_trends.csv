@@ -3,7 +3,7 @@ Strict steppe birds,Alaudala rufescens,Alaudala rufescens,Lesser Short-toed Lark
 Strict steppe birds,Burhinus oedicnemus,Burhinus oedicnemus,Stone Curlew,107000,176000,766,14,Loss,-2.3,Least Concern,123000,193000,Decreasing
 Strict steppe birds,Calandrella brachydactyla,Calandrella brachydactyla,Short-toed Lark,9460000,18100000,854,16,Loss,-10.5,Least Concern,9300000,17400000,Unknown
 Strict steppe birds,Chersophilus duponti,Chersophilus duponti,Dupont’s Lark,4400,5400,47,1,Uncertain trend,-1.6,Vulnerable,4600,4700,Decreasing
-Strict steppe birds,Chlamydotis undulata subsp. fuertaventurae,Chlamydotis undulata subsp. Fuertaventurae,Canarian Houbara Bustard,850,1200,5,1,Unknown,,Vulnerable,610,620,Increasing
+Strict steppe birds,Chlamydotis undulata subsp. fuertaventurae,Chlamydotis undulata subsp. fuertaventurae,Canarian Houbara Bustard,850,1200,5,1,Unknown,,Vulnerable,610,620,Increasing
 Strict steppe birds,Cursorius cursor,Cursorius cursor,Cream-coloured Courser,450,2800,18,1,Unknown,,Near Threatened,1300,1600,Unknown
 Strict steppe birds,Galerida cristata,Galerida cristata,Crested Lark,35300000,49000000,2022,3,Loss,-11.6,Least Concern,34300000,47500000,Decreasing
 Strict steppe birds,Melanocorypha calandra,Melanocorypha calandra,Calandra Lark,20500000,43800000,888,17,Loss,-8.5,Least Concern,19800000,38400000,Decreasing
@@ -17,8 +17,6 @@ Non-strict steppe birds,Alectoris rufa,Anthus berthelotii,Red-legged Partridge,1
 Non-strict steppe birds,Anthus berthelotii,Anthus campestris,Berthelot's Pipit,60000,300000,24,1,Unknown,,Least Concern,60000,300000,Unknown
 Non-strict steppe birds,Anthus campestris,Asio flammeus,Tawny Pipit,1820000,3440000,1574,30,Loss,-4.5,Least Concern,2240000,4050000,Unknown
 Non-strict steppe birds,Asio flammeus,Athene noctua,Short-eared Owl,109000,372000,1750,33,Stable,-1.8,Least Concern,169000,284000,Stable
-Non-strict steppe birds,Bucanetes githagineus,Bucanetes githagineus,Trumpeter Finch,21000,42900,38,1,Unknown,,Least Concern,21300,44000,Unknown
-Non-strict steppe birds,Charadrius morinellus,Eudromias morinellus,Eurasian dotterel,25600,96700,183,3,Loss,-11.1,Least Concern,21100,43100,Unknown
 Non-strict steppe birds,Circus cyaneus,Circus cyaneus,Hen Harrier,60000,109000,1339,25,Loss,-17,Least Concern,112000,174000,Decreasing
 Non-strict steppe birds,Circus macrourus,Circus macrourus,Pallid harrier,600,2300,171,3,Uncertain trend,0.1,Least Concern,2000,4300,Stable
 Non-strict steppe birds,Circus pygargus,Circus pygargus,Montagu’s Harrier,109000,184000,2022,38,Gain,6.4,Least Concern,139000,219000,Decreasing
@@ -29,12 +27,10 @@ Non-strict steppe birds,Emberiza calandra,Emberiza calandra,Corn Bunting,3607000
 Non-strict steppe birds,Falco columbarius,Falco columbarius,Merlin,64000,103000,867,16,Loss,-5,Vulnerable,40100,83400,Decreasing
 Non-strict steppe birds,Falco naumanni,Falco naumanni,Lesser Kestrel,61000,76100,488,9,Loss,-14.3,Least Concern,65900,85200,Stable
 Non-strict steppe birds,Galerida theklae,Galerida theklae,Thekla Lark,3500000,5680000,220,4,Gain,4.5,Least Concern,3500000,5690000,Increasing
-Non-strict steppe birds,Gelochelidon nilotica,Gelochelidon nilotica,Common Gull-billed Tern,33200,42400,201,4,"Gain, high uncentainty",21.3,Least Concern,26700,37400,Stable
 Non-strict steppe birds,Glareola pratincola,Glareola pratincola,Collared Pratincole,15700,29900,252,5,Uncertain trend,-4.6,Least Concern,17500,35000,Stable
 Non-strict steppe birds,Lanius meridionalis,Lanius meridionalis,Great grey Shrike,876000,1640000,249,5,Loss,-4.4,Vulnerable,35200000,55900000,Decreasing
 Non-strict steppe birds,Lanius minor,Lanius minor,Lesser grey Shrike,662000,1790000,1239,23,Loss,-10.7,Least Concern,752000,1610000,Decreasing
 Non-strict steppe birds,Oenanthe hispanica,Oenanthe hispanica,Black-eared Wheater,2560000,7350000,734,14,Loss,-10.8,Least Concern,2530000,7250000,Unknown
-Non-strict steppe birds,Oenanthe leucura,Oenanthe leucura,Black Wheatear,13100,13900,118,2,Loss,-17.4,Least Concern,8100,32200,Stable
 Non-strict steppe birds,Oenanthe oenanthe,Oenanthe oenanthe,Northern Wheater,10600000,31500000,3926,74,Loss,-3,Least Concern,10800000,29300000,Unknown
 Non-strict steppe birds,Pluvialis apricaria,Pluvialis apricaria,European golden plover,1260000,1720000,872,16,Loss,-3.1,Least Concern,1660000,2310000,Stable
 Non-strict steppe birds,Saxicola dacotiae,Saxicola dacotiae,Canary Islands stonechat,13400,15500,4,1,Unknown,,Near Threatened,13300,15500,Unknown
