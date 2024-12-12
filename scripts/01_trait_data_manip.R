@@ -89,6 +89,9 @@ ggplot(traits) + geom_histogram(aes(brain_size_g))
 ggplot(traits) + geom_histogram(aes(eye_axial_length))
 ggplot(traits) + geom_histogram(aes(eye_tranverse_diameter))
 ggplot(traits) + geom_histogram(aes(Development_continuum))
+table(traits$activity) # 2 nocturnal species
+table(traits$Mating_system) # 34 monogomaus species
+
 
 
 # check relationship between development categorical and continuous index
