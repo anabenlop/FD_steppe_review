@@ -7,18 +7,13 @@
 
 
 # load libraries
-# library(sf)
 library(dplyr)
 library(mFD)
-# library(picante)
 library(tidyverse)
 library(corrplot)
 library(caret)
 library(missForest)
 library(tibble)
-# library(biscale)
-# library(ggspatial)
-# library(cowplot)
 library(FD)
 library(ggplot2)
 
@@ -43,18 +38,9 @@ trait_data <- trait_data %>%
               filter(!binomial %in% c("Eudromias morinellus", "Gelochelidon nilotica","Oenanthe leucura", 
                                       "Falco tinnunculus", "Bucanetes githagineus"))
 
-# sp_data <- sp_data[sp_data$binomial != "Eudromias morinellus" &
-#                      sp_data$binomial != "Gelochelidon nilotica" &
-#                      sp_data$binomial != "Oenanthe leucura" &
-#                      sp_data$binomial != "Saxicola dacotiae"]
-# 
-
 sp_tax <- sp_tax %>% 
           filter(!binomial %in% c("Eudromias morinellus", "Gelochelidon nilotica","Oenanthe leucura", 
                           "Falco tinnunculus", "Bucanetes githagineus"))
-
-
-# sp_data$Type <- ifelse(sp_data$Type == "Strict steppe birds", "Strict", "NonStrict")
 
 sp_data$pop_size <- (sp_data$Population.size.EBBA2..min. + sp_data$Population.size.EBBA2..max.)/2
 
@@ -103,7 +89,7 @@ func_dist <- mFD::funct.dist(sp_tr = trait_data, tr_cat = trait_cat, metric="gow
 
 # build up functional spaces: calculate with different weighting of deviation and
 # with or without scaling functional distance.
-func_space <- mFD::quality.fspaces(sp_dist = func_dist, maxdim_pcoa = 10,
+func_space <- mFD::quality.fspaces(sp_dist = func_dist, maxdim_pcoa = 4,
                                    deviation_weighting = c("absolute","squared"), fdist_scaling = c(TRUE,FALSE),
                                    fdendro= "average")
 
@@ -132,13 +118,6 @@ mFD::quality.fspaces.plot(fspaces_quality= func_space,
                           gradient_deviation_quality = c(low = "#B7E3FF", high = "#2800B2"),
                           x_lab= "Trait-based distance")
 
-# From Magneville et al. 2022
-# convex hull-based indices require a space with less axes than the number of species number, and their computation time increases with the number of axes 
-# (to the point that functional beta-diversity indices are hardly computable in more than five dimensions). So if, for example, the best space is the one with 
-# six axes while the quality index of the 4D and 5D spaces are close, keeping the 4D space will be a pragmatic choice.
-
-# As FD indices will eventually be computed on coordinates on space (raw distance), 
-# we hereafter will consider only the mean absolute-deviation metric
 
 # Plot relation between functional axes and traits
 sp_coords <- func_space$details_fspaces$sp_pc_coord
@@ -201,56 +180,9 @@ trait_faxes4$"tr_faxes_plot"
 trait_faxes4a$"tr_faxes_plot"
 trait_faxes4b$"tr_faxes_plot"
 
-# convex hulls
-
-big_plot <- mFD::funct.space.plot(
-  sp_faxes_coord  = sp_coords[ ,c("PC1", "PC2", "PC3", "PC4")],
-  faxes           = c("PC1", "PC2", "PC3", "PC4"),
-  name_file       = NULL,
-  faxes_nm        = NULL,
-  range_faxes     = c(NA, NA),
-  color_bg        = "grey95",
-  color_pool      = "darkgreen",
-  fill_pool       = "white",
-  shape_pool      = 21,
-  size_pool       = 1,
-  plot_ch         = TRUE,
-  color_ch        = "black",
-  fill_ch         = "white",
-  alpha_ch        = 0.5,
-  plot_vertices   = TRUE,
-  color_vert      = "blueviolet",
-  fill_vert       = "blueviolet",
-  shape_vert      = 23,
-  size_vert       = 1,
-  plot_sp_nm      = NULL,
-  nm_size         = 3,
-  nm_color        = "black",
-  nm_fontface     = "plain",
-  check_input     = TRUE)
-
-big_plot
-
 # Alpha FD for strict and non-strict steppe birds ##############################
-
-# calculate indices for 4 axes
-FD_indices <- mFD::alpha.fd.multidim(
-  sp_faxes_coord   = sp_coords[ , c("PC1", "PC2", "PC3", "PC4")],
-  asb_sp_w         = as.matrix(sp_matrix), # here change matrix
-  ind_vect         = c("fdis", "fmpd", "fnnd", "feve", "fric", "fdiv", "fori", 
-                       "fspe", "fide"),
-  scaling          = TRUE,
-  check_input      = TRUE,
-  details_returned = TRUE)
-
 FD_df <- FD_indices$"functional_diversity_indices" #transform to df
 FD_df$threat <- row.names(FD_df)
-
-#Plot relationship between FD indices and type of steppe bird
-ggplot(FD_df) + geom_point(aes(x = threat, y = fric))
-ggplot(FD_df) + geom_point(aes(x = threat, y = fdiv))
-ggplot(FD_df) + geom_point(aes(x = threat, y = fdis))
-ggplot(FD_df) + geom_point(aes(x = threat, y = fspe))
 
 # calculate indices for 2 axes
 FD_indices_2axes <- mFD::alpha.fd.multidim(
@@ -265,7 +197,10 @@ FD_indices_2axes <- mFD::alpha.fd.multidim(
 FD_2ax_df <- FD_indices_2axes$"functional_diversity_indices" #transform to df
 FD_2ax_df$Type <- row.names(FD_2ax_df)
 FD_2ax_df
+
+# we might need to control for uneven number of species with null models - calculate SESFD
 # 
+
 # plots convex hull all, strict steppe and non-strict steppe species
 
 plots_alpha <- mFD::alpha.multidim.plot(
@@ -300,10 +235,7 @@ plots_alpha <- mFD::alpha.multidim.plot(
 plots_alpha$"fric"$"patchwork" # convex hull
 plots_alpha$"fric"$PC1_PC2 #
 plots_alpha$"fric"$PC3_PC4 #
-# plots_alpha$"fdiv"$"patchwork"
-# plots_alpha$"fspe"$"patchwork"
-# plots_alpha$"fdis"$"patchwork"
-# plots_alpha$"fori"$"patchwork"
+
 
 
 # Plot trait space Mammola et al. 2022 ----
@@ -441,8 +373,6 @@ trait_pos_short <- trait_pos %>% filter(
     )
 )
    
-
-
 theme_set(theme_minimal()) #Setting the theme
 
 plot_space_trait <-  ggplot(data = coordinates, aes(PC1, PC2)) +
@@ -540,37 +470,6 @@ ggsave(
   width = 7,
   height = 5,
   units = "in")
-
-
-# plot_space_trait_34 <-  ggplot(data = coordinates, aes(PC3, PC4)) +
-#   stat_density_2d(
-#     aes(fill = after_stat(level)),
-#     geom = "polygon",
-#     colour = NA,
-#     alpha = .5,
-#     h = .25
-#   ) +
-#   geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
-#   geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
-#   geom_point(shape = 19,
-#              size = .5,
-#              colour = "black") +
-#   scale_fill_gradientn(colours = rev(myCol2)) +
-#   theme(
-#     panel.background = element_rect(
-#       fill = NA,
-#       colour = "black",
-#       linewidth  = 1,
-#       linetype = "solid"
-#     ),
-#     panel.grid = element_blank(),
-#     legend.position = "none"
-#   ) +
-#   labs(x = "PCoA 3 (7.4%)", y = "PCoA 4 (6.5%)") +
-#   ylim(-.40, .40) + xlim(-.45, .45) +
-#   coord_fixed()
-# 
-# plot_space_trait_34
 
 # plot functional space for threatened and non-threatened bird species ------
 plot_threat <-
@@ -686,32 +585,6 @@ ggsave(
   height = 5,
   units = "in")
 
-# plot functional space type of steppe bird with silhouttes ----
-library(png)
-library(grid)
-
-# LOAD SILLOUETES
-
-#Otidiformes
-img <- readPNG("silhouette/houbara.png")
-Otidiformes <- rasterGrob(img, interpolate = TRUE)
-Otidiformes$width <- unit(.6, "npc")
-Otidiformes$height <- unit(.6, "npc")
-# 
-# #Pterocliformes
-img <- readPNG("silhouette/pterocles_gimp.png")
-Pterocliformes <- rasterGrob(img, interpolate = TRUE)
-Pterocliformes$width <- unit(.6, "npc")
-Pterocliformes$height <- unit(.6, "npc")
-# 
-# #Falconiformes
-img <- readPNG("silhouette/falco.png")
-Falconiformes <- rasterGrob(img, interpolate = TRUE)
-Falconiformes$width <- unit(.6, "npc")
-Falconiformes$height <- unit(.6, "npc")
-
-
-
 
 ## plot order-family centroids
 
@@ -739,41 +612,6 @@ plot_traits_order <-   ggplot(coordinates, aes(PC1, PC2)) +
     colour = "black",
     size = 1
   ) +
-  # annotation_custom(
-  #   Otidiformes,
-  #   xmin = .23,
-  #   xmax = 0.45,
-  #   ymin = .07,
-  #   ymax = .27
-  # ) +
-  # annotation_custom(
-  #   Pterocliformes,
-  #   xmin = .05,
-  #   xmax = .25,
-  #   ymin = .1,
-  #   ymax = .3
-  # ) +
-  # annotation_custom(
-  #   Falconiformes,
-  #   xmin = .05,
-  #   xmax = 0.25,
-  #   ymin = -.20,
-  #   ymax = -.4
-  # ) +
-  # annotation_custom(
-  #   leptonetidae,
-  #   xmin = .15,
-  #   xmax = .37,
-  #   ymin = 0,
-  #   ymax = -.1
-  # ) +
-  # annotation_custom(
-  #   symphytognathidae,
-  #   xmin = .05,
-  #   xmax = .15,
-  #   ymin = -0.31,
-  #   ymax = -.38
-  # ) +
   scale_fill_gradientn(colours = rev(myCol2)) +
   ggrepel::geom_text_repel(data = centroid, aes(x = cen.1, y = cen.2, label = Order), max.overlaps = 15) +
   theme(strip.text = element_text(size=14),
@@ -861,50 +699,6 @@ ggsave(
   height = 5,
   units = "in")
 
-# plot_traits3 <-   ggplot(coordinates, aes(PC1, PC2)) +
-#   stat_density_2d(
-#     aes(fill = ..level..),
-#     geom = "polygon",
-#     colour = NA,
-#     alpha = .5,
-#     h = .25
-#   ) +
-#   geom_hline(aes(yintercept = 0), linetype = 3, colour = "gray70") +
-#   geom_vline(aes(xintercept = 0), linetype = 3, colour = "gray70") +
-#   # geom_point(
-#   #   data = trait_pos,
-#   #   aes(x = PC1, y = PC2),
-#   #   shape = 21,
-#   #   fill = "white",
-#   #   size = 2.5
-#   # ) +
-#   # geom_point(
-#   #   data = trait_pos,
-#   #   aes(x = PC1, y = PC2),
-#   #   shape = 19,
-#   #   colour = "black",
-#   #   size = 1
-#   # ) +
-#   scale_fill_gradientn(colours = rev(myCol2)) +
-#   # ggrepel::geom_text_repel(data = trait_pos, aes(x = PC1, y = PC2, label = Trait), max.overlaps = 15) +
-#   theme(
-#     panel.background = element_rect(
-#       fill = NA,
-#       colour = "black",
-#       size = 1,
-#       linetype = "solid"
-#     ),
-#     panel.grid = element_blank(),
-#     legend.position = "none",
-#     axis.text = element_text(size = 12),
-#     axis.title = element_text(size = 14)) +
-#   labs(x = "PCoA 1 (48%)", y = "PCoA 2 (21%)") +
-#   ylim(-.50, .50) + xlim(-.50, .50) +
-#   coord_fixed() +
-#   facet_wrap(vars(Type, threat), ncol = 2, nrow = 2) 
-# 
-# plot_traits3
-
 ## check relationship between PCs and poptrends----
 head(sp_data)
 class(sp_coords)
@@ -916,7 +710,7 @@ sp_trends <- inner_join(sp_data, sp_PC, by = "binomial")
 hist(sp_trends$Change.index)
 
 #check with change index
-# it does not include Chlamydotis undulata subsp. fuertaventurae, Cursorius cursor, Anthus berthelotii, Bucanetes githagineus   
+# it does not include Chlamydotis undulata subsp. fuertaventurae, Cursorius cursor, Anthus berthelotii  
 ggplot(sp_trends) + geom_point(aes(PC1, Change.index)) +
   geom_smooth(aes(PC1, Change.index), method = "lm") + theme_bw()
 
@@ -929,12 +723,24 @@ ggplot(sp_trends) + geom_point(aes(PC2, Change.index)) +
 # ggplot(sp_trends) + geom_point(aes(PC2, Change.index)) +
 #   geom_smooth(aes(PC2, Change.index), method = "loess")
 
+# check relationship between trends and PC scores
 m1 <- lm(Change.index ~ PC1, data = sp_trends)
 m2 <- lm(Change.index ~ PC2, data = sp_trends)
 m3 <- lm(Change.index ~ PC1 + PC2, data = sp_trends)
 m4 <- lm(Change.index ~ PC1*PC2, data = sp_trends)
+m1b <- lm(Change.index ~ poly(PC1,2), data = sp_trends)
+m2b <- lm(Change.index ~ poly(PC2,2), data = sp_trends)
+m3b <- lm(Change.index ~ poly(PC1,2) + poly(PC2,2),, data = sp_trends)
+m4b <- lm(Change.index ~ poly(PC1,2)*poly(PC2,2), data = sp_trends)
 
-AIC(m1,m2,m3,m4)
+AIC(m1,m2,m3,m4,m1b,m2b,m3b,m4b)
+
+library(effects)
+plot(allEffects(m1))
+plot(allEffects(m2b))
+
+summary(m1)
+summary(m2b)
 
 #check with EBBA2 trends
 sp_trends$Pop.trend.EBBA2_recalc <- ifelse(is.na(sp_trends$Change.index), "Unknown",
@@ -957,70 +763,7 @@ sp_rank <- read.csv("data/sp_rank.csv", stringsAsFactors = F)
 
 sp_trends <- inner_join(sp_trends, sp_rank, by = "binomial")
 
-#check correlation between PC1 and scoring
-ggplot(sp_trends) + geom_point(aes(PC1, Promedio)) +
-  geom_smooth(aes(PC1, Promedio), method = "lm") + theme_bw()
-
-# ggplot(sp_trends) + geom_point(aes(PC1, Promedio)) +
-#   geom_smooth(aes(PC1, Promedio), method = "loess")
-
-ggplot(sp_trends) + geom_point(aes(PC2, Promedio)) +
-  geom_smooth(aes(PC2, Promedio), method = "lm") + theme_bw()
-
-# ggplot(sp_trends) + geom_point(aes(PC2, Promedio)) +
-#   geom_smooth(aes(PC2, Promedio), method = "loess") 
-
-summary(lm(Promedio ~ PC1, data = sp_trends))
-summary(lm(Promedio ~ PC2, data = sp_trends))
-
-#remove Vanellus vanellus and Pluvialis apricaria
-# sp_trends2 <- sp_trends[sp_trends$Promedio > 4, ]
-# 
-# ggplot(sp_trends2) + geom_point(aes(PC1, Promedio)) +
-#   geom_smooth(aes(PC1, Promedio), method = "lm") + theme_bw()
-# 
-# ggplot(sp_trends2) + geom_point(aes(PC2, Promedio)) +
-#   geom_smooth(aes(PC2, Promedio), method = "lm") + theme_bw()
-
-m1 <- lm(Promedio ~ PC1, data = sp_trends)
-m2 <- lm(Promedio ~ PC2, data = sp_trends)
-m3 <- lm(Promedio ~ PC1 + PC2, data = sp_trends)
-m4 <- lm(Promedio ~ PC1*PC2, data = sp_trends)
-m1b <- lm(Promedio ~ poly(PC1,2), data = sp_trends) 
-m2b <- lm(Promedio ~ poly(PC2,2), data = sp_trends) 
-m3b <- lm(Promedio ~ poly(PC1,2) + poly(PC2,2), data = sp_trends) 
-m4b <- lm(Promedio ~ poly(PC1,2)*poly(PC2,2), data = sp_trends) 
-
-AIC(m1,m2,m3,m4, m1b, m2b, m3b, m4b)
-
-library(effects)
-plot(allEffects(m2))
-plot(allEffects(m2b))
-
-# check relationship between trends and PC scores
-m5 <- lm(Change.index ~ PC1, data = sp_trends)
-m6 <- lm(Change.index ~ PC2, data = sp_trends)
-m7 <- lm(Change.index ~ PC1 + PC2, data = sp_trends)
-m8 <- lm(Change.index ~ PC1*PC2, data = sp_trends)
-m5b <- lm(Change.index ~ poly(PC1,2), data = sp_trends)
-m6b <- lm(Change.index ~ poly(PC2,2), data = sp_trends)
-m7b <- lm(Change.index ~ poly(PC1,2) + poly(PC2,2),, data = sp_trends)
-m8b <- lm(Change.index ~ poly(PC1,2)*poly(PC2,2), data = sp_trends)
-
-AIC(m5,m6,m7,m8,m5b,m6b,m7b,m8b)
-
-plot(allEffects(m5))
-# plot(allEffects(m6))
-# plot(allEffects(m7))
-# plot(allEffects(m8))
-# plot(allEffects(m5b))
-plot(allEffects(m6b))
-# plot(allEffects(m7b))
-# plot(allEffects(m8b))
-summary(m5)
-summary(m6b)
-
 write.csv(sp_trends, "clean_data/sp_trends.csv", row.names = F)
 
-
+# End of script -----
 
