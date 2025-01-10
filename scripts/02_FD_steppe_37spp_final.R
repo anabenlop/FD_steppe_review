@@ -16,6 +16,8 @@ library(missForest)
 library(tibble)
 library(FD)
 library(ggplot2)
+library(picante)
+library(tictoc)
 
 # clean environment
 rm(list = ls())
@@ -73,6 +75,10 @@ sp_matrix <- sp_data %>% group_by(threat, binomial) %>%
   replace(is.na(.), 0) %>% #replace NAs with 0
   tibble::column_to_rownames(var = "threat")
 
+# All_sp <- rep(1, length(sp_matrix))
+# sp_matrix <- rbind(sp_matrix,All_sp)
+# rownames(sp_matrix)[3] <- "All"
+
 #Setting species names as row names
 rownames(trait_data) <- trait_data$binomial
 trait_data$binomial <- NULL 
@@ -112,8 +118,7 @@ func_space$"quality_fspaces" %>%
 mFD::quality.fspaces.plot(fspaces_quality= func_space,
                           quality_metric  = "rmsd_scaled",
                           fspaces_plot = c("tree_average", "pcoa_2d", "pcoa_3d",
-                                           "pcoa_4d", "pcoa_5d", "pcoa_6d",
-                                           "pcoa_7d", "pcoa_8d"),
+                                           "pcoa_4d"),
                           gradient_deviation = c(neg = "#030091", nul = "#66B79C", pos = "#C6FFB7"),
                           gradient_deviation_quality = c(low = "#B7E3FF", high = "#2800B2"),
                           x_lab= "Trait-based distance")
@@ -181,9 +186,6 @@ trait_faxes4a$"tr_faxes_plot"
 trait_faxes4b$"tr_faxes_plot"
 
 # Alpha FD for strict and non-strict steppe birds ##############################
-FD_df <- FD_indices$"functional_diversity_indices" #transform to df
-FD_df$threat <- row.names(FD_df)
-
 # calculate indices for 2 axes
 FD_indices_2axes <- mFD::alpha.fd.multidim(
   sp_faxes_coord   = sp_coords[ , c("PC1", "PC2")],
@@ -198,8 +200,111 @@ FD_2ax_df <- FD_indices_2axes$"functional_diversity_indices" #transform to df
 FD_2ax_df$Type <- row.names(FD_2ax_df)
 FD_2ax_df
 
-# we might need to control for uneven number of species with null models - calculate SESFD
+fric_mFD <- data.frame(Type = FD_2ax_df$Type, sp_ric = FD_2ax_df$sp_richn, fric = FD_2ax_df$fric)
+
+# we might need to control for uneven number of species with null models - calculate SESFD ----
 # 
+
+#########################################################################
+#####################CALCULATING FD (FRic) WITH FD PACKAGE ############# 
+#########################################################################
+trait_data_ord <- trait_data[order(row.names(trait_data)), ] # order trait data by species name
+
+FDindexes_FD <- dbFD(
+  trait_data_ord, as.matrix(sp_matrix), w.abun = FALSE, 
+  corr ="sqrt", calc.FRic=TRUE, m = 2, 
+  stand.FRic = TRUE, scale.RaoQ = FALSE, calc.FGR = FALSE,
+  calc.CWM = FALSE, print.pco = TRUE
+)
+
+# FDindexes_FD$x.values
+# FD_package  <- as.data.frame(FDindexes_FD)
+
+unique(length(FDindexes_FD$FRic))
+
+# # Converting row names into a column:
+# FD_package_0 <- rownames_to_column(FD_package, "CUADRICULA")
+
+######################################################
+###Are FRic values obtained with mFD and FD different?###
+############################################################
+
+
+fric_mFD
+#             Type sp_ric      fric
+# 1 Non-threatened     30 0.9573449
+# 2     Threatened      7 0.4546568
+
+FDindexes_FD$FRic 
+# Non-threatened     Threatened 
+# 0.9639259      0.5615138 
+
+
+######################################################################
+###  Null model permutations to calculate SESFRic#####################
+######################################################################
+# SES values can be positive or negative, and their statistical significance at P < 0.05 is assumed when the 
+# SES value falls outside the range of −1.96 to 1.96, assuming a normal distribution of deviations9,20. 
+# On one hand, a SES value greater than 1.96 indicates that there is functional over-dispersion due to a limiting 
+# similarity mechanism. On the other hand, SES values lower than −1.96 indicate that there is functional 
+# under-dispersion, which means that an environmental filtering mechanism occurs. When SES values fall within 
+# the range of −1.96 to 1.96, mechanistic processes cannot be proved, and then stochastic processes are assumed 
+# as the observed values cannot be distinguished from random values.
+
+# Positive SES values indicate that the considered variable (i.e., FD) is higher than expected considering 
+# the number of species present in a community, and vice versa
+# Observed values cannot be distinguished from random values.
+
+# mFD Package
+set.seed(123)
+null.model.type <- "independentswap" # available methods: "independentswap", "frequency", "richness", "trialswap"
+nperm <- 999
+fric <- matrix(NaN, nrow = nperm, ncol = length(fric_mFD$fric))
+abund.null <- vector(mode="list", nperm)
+
+tic("Run 999 permutations to calculate SESFRic")
+for(i in seq(nperm)){ # loop for each permutation
+  # Create permutated abundance matrix
+  abund.i <- randomizeMatrix(as.matrix(sp_matrix), null.model = null.model.type)
+  traits.i <- trait_data_ord
+  
+  abund.null[[i]] <- abund.i
+  
+  # Record results
+  res.i <- mFD::alpha.fd.multidim(
+    sp_faxes_coord   = sp_coords[ , c("PC1", "PC2")],
+    asb_sp_w         = abund.i, # here change matrix
+    ind_vect         = c("fric"),
+    scaling          = TRUE,
+    check_input      = TRUE,
+    details_returned = TRUE)
+  
+  # Save result
+  fric[i,] <- res.i$functional_diversity_indices$fric
+  
+  rm(abund.i); rm(res.i)
+  print(paste0(round(i/nperm*100), "% of permutations completed"))
+}
+toc() # 6.3 sec elapsed
+
+### Summary stats
+SESFRic_mfd = (fric_mFD$fric - apply(fric, 2, mean)) / apply(fric, 2, sd) # standardized effect size
+SESFRic_mfd
+# Non-threatened     Threatened 
+#  0.4599247       0.2677439
+
+# check if they are outside expected distribution
+q_fric <- NaN*fric_mFD$fric
+for(i in seq(q_fric)){
+  q_fric[i] <- sum(fric_mFD$fric[i] > fric[,i]) / length(fric[,i])
+}
+sigfric <- q_fric < 0.05 | q_fric > 0.95 # test if outside distribution
+sigfric
+# Non-threatened     Threatened 
+# FALSE          FALSE 
+
+# Observed values cannot be distinguished from random values.
+
 
 # plots convex hull all, strict steppe and non-strict steppe species
 
